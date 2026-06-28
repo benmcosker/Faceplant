@@ -1,0 +1,55 @@
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+
+class UserOut(BaseModel):
+    id: int
+    username: str
+    avatar_url: str
+    is_bot: bool
+
+    model_config = {"from_attributes": True}
+
+
+class PostCreate(BaseModel):
+    username: str
+    body: str = Field(min_length=1, max_length=2000)
+
+
+class CommentCreate(BaseModel):
+    username: str
+    body: str = Field(min_length=1, max_length=2000)
+
+
+class LikeToggle(BaseModel):
+    username: str
+
+
+class CommentOut(BaseModel):
+    id: int
+    body: str
+    created_at: datetime
+    author: UserOut
+
+
+class PostOut(BaseModel):
+    id: int
+    body: str
+    created_at: datetime
+    author: UserOut
+    like_count: int
+    comment_count: int
+
+
+class LikeResult(BaseModel):
+    liked: bool
+    count: int
+
+
+class AdminBotCreate(BaseModel):
+    username: str
+    password: str = Field(min_length=8)
+    persona: str
+    model: str | None = None
+    avatar_url: str

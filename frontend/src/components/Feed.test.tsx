@@ -1,0 +1,45 @@
+import { describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import Feed from './Feed'
+
+vi.mock('../api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api')>()
+  return { ...actual, fetchPosts: vi.fn() }
+})
+import { ApiError, fetchPosts, type Post } from '../api'
+
+const POST: Post = {
+  id: 1,
+  body: 'hello world',
+  created_at: new Date().toISOString(),
+  author: { id: 2, username: 'someone', avatar_url: '/media/avatars/x.png', is_bot: false },
+  like_count: 3,
+  comment_count: 1,
+}
+
+describe('Feed', () => {
+  it('renders posts returned by the API', async () => {
+    vi.mocked(fetchPosts).mockResolvedValue([POST])
+
+    render(<Feed username="me" />)
+
+    expect(await screen.findByText('hello world')).toBeInTheDocument()
+    expect(screen.getByText('someone')).toBeInTheDocument()
+  })
+
+  it('shows an empty-state message when there are no posts', async () => {
+    vi.mocked(fetchPosts).mockResolvedValue([])
+
+    render(<Feed username="me" />)
+
+    expect(await screen.findByText('No posts yet. Be the first.')).toBeInTheDocument()
+  })
+
+  it('shows an error message when the feed fails to load', async () => {
+    vi.mocked(fetchPosts).mockRejectedValue(new ApiError('nope', 502, 'upstream_error'))
+
+    render(<Feed username="me" />)
+
+    expect(await screen.findByText('nope')).toBeInTheDocument()
+  })
+})

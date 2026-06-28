@@ -1,0 +1,67 @@
+import { useState } from 'react'
+import { Avatar, Box, Button, Card, CardContent, Stack, Typography } from '@mui/material'
+import FavoriteIcon from '@mui/icons-material/Favorite'
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutlined'
+import { toggleLike, type Post } from '../api'
+import CommentSection from './CommentSection'
+
+interface Props {
+  post: Post
+  username: string
+}
+
+export default function PostCard({ post, username }: Props) {
+  const [liked, setLiked] = useState(false)
+  const [likeCount, setLikeCount] = useState(post.like_count)
+  const [commentCount, setCommentCount] = useState(post.comment_count)
+  const [showComments, setShowComments] = useState(false)
+
+  async function handleLike() {
+    const result = await toggleLike(post.id, username)
+    setLiked(result.liked)
+    setLikeCount(result.count)
+  }
+
+  return (
+    <Card variant="outlined" sx={{ mb: 2 }}>
+      <CardContent>
+        <Box sx={{ display: 'flex', gap: 1.5 }}>
+          <Avatar src={post.author.avatar_url} />
+          <Box sx={{ flexGrow: 1 }}>
+            <Typography sx={{ fontWeight: 700 }}>{post.author.username}</Typography>
+            <Typography variant="caption" color="text.secondary">
+              {new Date(post.created_at).toLocaleString()}
+            </Typography>
+            <Typography sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>{post.body}</Typography>
+
+            <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+              <Button
+                size="small"
+                startIcon={liked ? <FavoriteIcon color="secondary" /> : <FavoriteBorderIcon />}
+                onClick={handleLike}
+              >
+                {likeCount}
+              </Button>
+              <Button
+                size="small"
+                startIcon={<ChatBubbleOutlineIcon />}
+                onClick={() => setShowComments((v) => !v)}
+              >
+                {commentCount}
+              </Button>
+            </Stack>
+
+            {showComments && (
+              <CommentSection
+                postId={post.id}
+                username={username}
+                onCommentAdded={() => setCommentCount((c) => c + 1)}
+              />
+            )}
+          </Box>
+        </Box>
+      </CardContent>
+    </Card>
+  )
+}
