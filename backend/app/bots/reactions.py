@@ -8,10 +8,15 @@ from sqlalchemy.orm import Session
 from .. import models
 from ..config import settings
 from ..db import SessionLocal
+from .roster import ROSTER
 
 logger = logging.getLogger(__name__)
 
 _client: Anthropic | None = None
+
+_VOICE_NOTES_BY_USERNAME = {entry["username"]: entry.get("voice_notes") for entry in ROSTER}
+
+THREAD_CONTEXT_LIMIT = 5
 
 
 def _get_client() -> Anthropic:
@@ -59,21 +64,52 @@ def enqueue_reactions_for_post(db: Session, post: models.Post) -> None:
     db.commit()
 
 
-def _build_prompt(bot: models.User, post: models.Post) -> str:
-    return (
-        f"You are role-playing a social media persona: {bot.persona}\n\n"
-        f'Someone just posted:\n"""\n{post.body}\n"""\n\n'
-        "Write a single short, in-character reply (1-2 sentences, no hashtags, no "
-        "surrounding quotation marks). Stay fully in character."
+def _build_system_prompt(bot: models.User) -> str:
+    system = (
+        "You are role-playing a social media persona in the comments section of "
+        f"a post. Persona: {bot.persona}"
     )
+    voice_notes = _VOICE_NOTES_BY_USERNAME.get(bot.username)
+    if voice_notes:
+        system += f"\n\nVoice notes (style cues to follow closely): {voice_notes}"
+    system += (
+        "\n\nStay fully in character at all times. Write a single short, "
+        "in-character reply (1-2 sentences, no hashtags, no surrounding "
+        "quotation marks)."
+    )
+    return system
 
 
-def _generate_reaction_text(bot: models.User, post: models.Post) -> str:
+def _build_user_prompt(post: models.Post, thread_comments: list[tuple[str, str]]) -> str:
+    parts = [f'Someone just posted:\n"""\n{post.body}\n"""']
+    if thread_comments:
+        thread = "\n".join(f"{username}: {body}" for username, body in thread_comments)
+        parts.append(f"Recent replies already in the thread:\n{thread}")
+    parts.append("Write your in-character reply to the post (and thread, if relevant).")
+    return "\n\n".join(parts)
+
+
+def _get_recent_comments(db: Session, post_id: int, limit: int = THREAD_CONTEXT_LIMIT) -> list[tuple[str, str]]:
+    rows = (
+        db.query(models.Comment, models.User.username)
+        .join(models.User, models.Comment.user_id == models.User.id)
+        .filter(models.Comment.post_id == post_id)
+        .order_by(models.Comment.id.desc())
+        .limit(limit)
+        .all()
+    )
+    return [(username, comment.body) for comment, username in reversed(rows)]
+
+
+def _generate_reaction_text(
+    bot: models.User, post: models.Post, thread_comments: list[tuple[str, str]] | None = None
+) -> str:
     client = _get_client()
     response = client.messages.create(
         model=bot.bot_model or settings.default_bot_model,
-        max_tokens=120,
-        messages=[{"role": "user", "content": _build_prompt(bot, post)}],
+        max_tokens=160,
+        system=_build_system_prompt(bot),
+        messages=[{"role": "user", "content": _build_user_prompt(post, thread_comments or [])}],
     )
     return "".join(block.text for block in response.content if block.type == "text").strip()
 
@@ -97,7 +133,8 @@ def run_due_reaction_jobs() -> None:
                 db.commit()
                 continue
             try:
-                text = _generate_reaction_text(bot, post)
+                thread_comments = _get_recent_comments(db, post.id)
+                text = _generate_reaction_text(bot, post, thread_comments)
                 if text:
                     db.add(models.Comment(post_id=post.id, user_id=bot.id, body=text))
                 already_liked = (

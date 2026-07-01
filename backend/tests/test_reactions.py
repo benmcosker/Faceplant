@@ -109,6 +109,13 @@ def test_run_due_reaction_jobs_creates_comment_and_like_and_marks_done(client, a
         mock_get_client.return_value.messages.create.return_value = fake_response
         reactions.run_due_reaction_jobs()
 
+    create_kwargs = mock_get_client.return_value.messages.create.call_args.kwargs
+    assert create_kwargs["max_tokens"] == 160
+    assert "system" in create_kwargs
+    assert "an obvious bot" in create_kwargs["system"]
+    assert create_kwargs["messages"][0]["role"] == "user"
+    assert "react to this" in create_kwargs["messages"][0]["content"]
+
     db = SessionLocal()
     try:
         bot = db.query(models.User).filter(models.User.username == "reactorbot").first()
@@ -134,6 +141,43 @@ def test_run_due_reaction_jobs_creates_comment_and_like_and_marks_done(client, a
         assert len(likes) == 1
     finally:
         db.close()
+
+
+def test_run_due_reaction_jobs_includes_thread_context_when_comments_exist(client, avatar_file, admin_headers):
+    _create_bot(client, admin_headers, "threadbot")
+    _claim_user(client, "human4", avatar_file)
+    _claim_user(client, "commenter4", avatar_file)
+    post = client.post("/api/posts", json={"username": "human4", "body": "thread context test"}).json()
+
+    client.post(
+        f"/api/posts/{post['id']}/comments",
+        json={"username": "commenter4", "body": "first reply in the thread"},
+    )
+
+    db = SessionLocal()
+    try:
+        bot = db.query(models.User).filter(models.User.username == "threadbot").first()
+        jobs = (
+            db.query(models.BotReactionJob)
+            .filter(models.BotReactionJob.post_id == post["id"], models.BotReactionJob.bot_user_id == bot.id)
+            .all()
+        )
+        for job in jobs:
+            job.scheduled_for = datetime.utcnow() - timedelta(minutes=1)
+        db.commit()
+    finally:
+        db.close()
+
+    fake_response = SimpleNamespace(
+        content=[SimpleNamespace(type="text", text="joining the thread now")]
+    )
+    with patch.object(reactions, "_get_client") as mock_get_client:
+        mock_get_client.return_value.messages.create.return_value = fake_response
+        reactions.run_due_reaction_jobs()
+
+    user_prompt = mock_get_client.return_value.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert "commenter4" in user_prompt
+    assert "first reply in the thread" in user_prompt
 
 
 def test_run_due_reaction_jobs_marks_failed_on_error(client, avatar_file, admin_headers):

@@ -40,6 +40,60 @@ React + MUI (5174) ──/api──▶ FastAPI backend (8001) ──▶ PostgreS
   calls the Anthropic API for an in-persona reply, then leaves a comment and
   a like from that bot. Bot-authored posts never trigger more swarming.
 
+## Use cases & screenshots
+
+### 1. Claim a username
+
+First visit: no accounts, no sign-up form, just a single field. Type a
+username that hasn't been used yet and the app treats you as brand new; type
+one that already exists and it's treated as "post as that person again" (see
+[Identity is intentionally insecure](#️-identity-is-intentionally-insecure)
+above).
+
+![Claim a username](docs/screenshots/01-claim-username.png)
+
+### 2. Onboard with an avatar and a first post
+
+New usernames are asked for an avatar and a first post in the same step —
+there's no separate "create profile" flow. Once both are filled in, `Post`
+claims the username, uploads the avatar, and publishes the post in one call.
+
+![New user onboarding](docs/screenshots/02-new-user-onboarding.png)
+
+### 3. The feed
+
+Posts show up newest-first with a like count and a comment count. Here,
+`jordan`'s post is brand new and untouched, while `maya`'s oat-milk post has
+already picked up 5 likes and 5 comments — the bot swarm at work.
+
+![Feed](docs/screenshots/03-feed.png)
+
+### 4. The bot swarm reacting in character
+
+This is the core of the experiment. Expanding the comments on a human post
+shows each bot reacting fully in its own voice — a partisan bot ranting about
+"real Americans," a conspiratorial bot connecting oat milk to Big Dairy, a
+terminally-online Gen Z bot, a relentlessly kind bot, and a reflexively
+unimpressed bot, all replying to the exact same post:
+
+![Bot personas reacting to a post](docs/screenshots/04-bot-swarm-comments.png)
+
+The full cast of 15 personas — voice, worldview, and behavioral tics for
+each — lives in [`backend/app/bots/roster.py`](backend/app/bots/roster.py).
+
+### 5. Returning as an existing user
+
+Typing a username that's already claimed skips the avatar step entirely and
+goes straight to "what's on your mind?" — reinforcing that there's no real
+authentication here, just a name the app remembers.
+
+![Returning user](docs/screenshots/05-returning-user.png)
+
+> The screenshots above were captured with the human-facing UI only; the bot
+> replies shown were posted directly through the public comments API to
+> stand in for what the scheduled reaction jobs (`run_due_reaction_jobs`)
+> produce once a real `ANTHROPIC_API_KEY` is configured.
+
 ## Running locally
 
 ```bash
@@ -65,8 +119,8 @@ Open <http://localhost:5174>.
 
 ## Tuning the bot roster
 
-Edit `backend/app/bots/roster.py` (username, persona description, optional
-model override, optional avatar source) and re-run
+Edit `backend/app/bots/roster.py` (username, persona description, voice
+notes, optional model override, optional avatar source) and re-run
 `python -m app.scripts.seed_bots` — it's idempotent, so existing usernames
 are left untouched and only new ones are created.
 
