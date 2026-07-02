@@ -5,6 +5,7 @@ import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutlined'
 import { toggleLike, type Post } from '../api'
 import CommentSection from './CommentSection'
+import { renderBodyWithGifs } from './gifBody'
 
 interface Props {
   post: Post
@@ -33,7 +34,9 @@ export default function PostCard({ post, username }: Props) {
             <Typography variant="caption" color="text.secondary">
               {new Date(post.created_at).toLocaleString()}
             </Typography>
-            <Typography sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>{post.body}</Typography>
+            <Typography component="div" sx={{ mt: 1 }}>
+              {renderBodyWithGifs(post.body)}
+            </Typography>
 
             <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
               <Button

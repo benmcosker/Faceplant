@@ -1,7 +1,10 @@
+import json
 import logging
 import random
+import re
 from datetime import datetime, timedelta
 
+import httpx
 from anthropic import Anthropic
 from sqlalchemy.orm import Session
 
@@ -15,8 +18,13 @@ logger = logging.getLogger(__name__)
 _client: Anthropic | None = None
 
 _VOICE_NOTES_BY_USERNAME = {entry["username"]: entry.get("voice_notes") for entry in ROSTER}
+_USES_GIPHY_BY_USERNAME = {
+    entry["username"] for entry in ROSTER if entry.get("uses_giphy")
+}
 
 THREAD_CONTEXT_LIMIT = 5
+
+GIPHY_RANDOM_URL = "https://api.giphy.com/v1/gifs/random"
 
 
 def _get_client() -> Anthropic:
@@ -104,6 +112,8 @@ def _get_recent_comments(db: Session, post_id: int, limit: int = THREAD_CONTEXT_
 def _generate_reaction_text(
     bot: models.User, post: models.Post, thread_comments: list[tuple[str, str]] | None = None
 ) -> str:
+    if bot.username in _USES_GIPHY_BY_USERNAME:
+        return _generate_giphy_reaction_text(bot, post, thread_comments or [])
     client = _get_client()
     response = client.messages.create(
         model=bot.bot_model or settings.default_bot_model,
@@ -112,6 +122,81 @@ def _generate_reaction_text(
         messages=[{"role": "user", "content": _build_user_prompt(post, thread_comments or [])}],
     )
     return "".join(block.text for block in response.content if block.type == "text").strip()
+
+
+def _build_giphy_system_prompt(bot: models.User) -> str:
+    system = (
+        "You are role-playing a social media persona who reacts to posts with a "
+        f"reaction GIF plus a tiny caption. Persona: {bot.persona}"
+    )
+    voice_notes = _VOICE_NOTES_BY_USERNAME.get(bot.username)
+    if voice_notes:
+        system += f"\n\nVoice notes (style cues to follow closely): {voice_notes}"
+    system += (
+        "\n\nStay fully in character. Respond with ONLY a single JSON object and "
+        "nothing else — no markdown, no code fences, no commentary. Use exactly "
+        'this shape: {"caption": "<a tiny in-character caption, a few words at '
+        'most, no hashtags>", "tag": "<one to three words naming the reaction GIF '
+        "to search for, e.g. 'eye roll', 'mic drop', 'facepalm', 'popcorn'>\"}."
+    )
+    return system
+
+
+_JSON_OBJECT_RE = re.compile(r"\{.*\}", re.DOTALL)
+
+
+def _parse_caption_and_tag(raw: str) -> tuple[str, str]:
+    """Pulls caption/tag out of the model's reply, tolerating stray code fences."""
+    match = _JSON_OBJECT_RE.search(raw)
+    if not match:
+        return "", ""
+    try:
+        data = json.loads(match.group(0))
+    except json.JSONDecodeError:
+        return "", ""
+    caption = str(data.get("caption") or "").strip()
+    tag = str(data.get("tag") or "").strip()
+    return caption, tag
+
+
+def _fetch_giphy_gif_url(tag: str) -> str:
+    """Fetches a random GIF URL from Giphy for `tag`; "" if unavailable."""
+    if not settings.giphy_api_key:
+        return ""
+    response = httpx.get(
+        GIPHY_RANDOM_URL,
+        params={"api_key": settings.giphy_api_key, "tag": tag, "rating": "pg-13"},
+        timeout=10,
+    )
+    response.raise_for_status()
+    data = response.json().get("data") or {}
+    # The random endpoint nests the canonical URL under images.original.url and
+    # also exposes a legacy top-level image_url; prefer the former.
+    original = (data.get("images") or {}).get("original") or {}
+    return (original.get("url") or data.get("image_url") or "").strip()
+
+
+def _generate_giphy_reaction_text(
+    bot: models.User, post: models.Post, thread_comments: list[tuple[str, str]]
+) -> str:
+    """A GIF-first reaction: model picks a caption + tag, Giphy supplies the GIF.
+
+    Returns a ``caption\\ngif_url`` body (the frontend renders the trailing URL
+    as an inline image). Falls back to caption-only if no GIF is available.
+    """
+    client = _get_client()
+    response = client.messages.create(
+        model=bot.bot_model or settings.default_bot_model,
+        max_tokens=160,
+        system=_build_giphy_system_prompt(bot),
+        messages=[{"role": "user", "content": _build_user_prompt(post, thread_comments)}],
+    )
+    raw = "".join(block.text for block in response.content if block.type == "text").strip()
+    caption, tag = _parse_caption_and_tag(raw)
+    gif_url = _fetch_giphy_gif_url(tag) if tag else ""
+    if gif_url:
+        return f"{caption}\n{gif_url}" if caption else gif_url
+    return caption
 
 
 def run_due_reaction_jobs() -> None:

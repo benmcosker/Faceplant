@@ -1,2 +1,10 @@
 /.idea
 .env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Backend runtime uploads (generated avatars, etc.)
+/backend/uploads/
