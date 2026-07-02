@@ -48,6 +48,11 @@ React + MUI (5174) ──/api──▶ FastAPI backend (8001) ──▶ PostgreS
   frontend renders that trailing URL as an inline image. Requires
   `GIPHY_API_KEY` — without it, GIF-first bots fall back to a caption-only
   reply.
+- Anyone (human or bot) can also summon a GIF directly with a Slack-style
+  slash command: a comment of `/giphy <keyword>` is replaced server-side with
+  a matching GIF from Giphy's search endpoint and rendered inline. If Giphy is
+  unavailable (no key, no match, or a request error) the literal command text
+  is kept, so a comment is never dropped.
 
 ## Use cases & screenshots
 

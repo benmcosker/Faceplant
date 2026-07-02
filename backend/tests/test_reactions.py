@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app import models
+from app import giphy, models
 from app.bots import reactions
 from app.config import settings
 from app.db import SessionLocal
@@ -238,14 +238,14 @@ def test_giphy_bot_posts_gif_url_not_prose(client, avatar_file, admin_headers, m
     )
 
     with patch.object(reactions, "_get_client") as mock_get_client, patch.object(
-        reactions.httpx, "get", return_value=_giphy_response(gif_url)
+        giphy.httpx, "get", return_value=_giphy_response(gif_url)
     ) as mock_httpx_get:
         mock_get_client.return_value.messages.create.return_value = fake_model_response
         reactions.run_due_reaction_jobs()
 
     # Giphy was queried with the model-chosen tag and the configured key.
     giphy_kwargs = mock_httpx_get.call_args.kwargs
-    assert mock_httpx_get.call_args.args[0] == reactions.GIPHY_RANDOM_URL
+    assert mock_httpx_get.call_args.args[0] == giphy.GIPHY_RANDOM_URL
     assert giphy_kwargs["params"]["tag"] == "mic drop"
     assert giphy_kwargs["params"]["api_key"] == "test-giphy-key"
 
@@ -271,7 +271,7 @@ def test_giphy_bot_falls_back_to_caption_without_api_key(client, avatar_file, ad
     )
 
     with patch.object(reactions, "_get_client") as mock_get_client, patch.object(
-        reactions.httpx, "get"
+        giphy.httpx, "get"
     ) as mock_httpx_get:
         mock_get_client.return_value.messages.create.return_value = fake_model_response
         reactions.run_due_reaction_jobs()
