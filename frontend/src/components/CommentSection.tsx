@@ -72,7 +72,7 @@ export default function CommentSection({ postId, username, onCommentAdded }: Pro
         <TextField
           size="small"
           fullWidth
-          placeholder="Write a comment…"
+          placeholder="Write a comment… or /giphy a keyword"
           value={body}
           onChange={(e) => setBody(e.target.value)}
         />
