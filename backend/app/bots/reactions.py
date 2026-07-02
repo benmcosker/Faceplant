@@ -4,11 +4,10 @@ import random
 import re
 from datetime import datetime, timedelta
 
-import httpx
 from anthropic import Anthropic
 from sqlalchemy.orm import Session
 
-from .. import models
+from .. import giphy, models
 from ..config import settings
 from ..db import SessionLocal
 from .roster import ROSTER
@@ -23,8 +22,6 @@ _USES_GIPHY_BY_USERNAME = {
 }
 
 THREAD_CONTEXT_LIMIT = 5
-
-GIPHY_RANDOM_URL = "https://api.giphy.com/v1/gifs/random"
 
 
 def _get_client() -> Anthropic:
@@ -159,23 +156,6 @@ def _parse_caption_and_tag(raw: str) -> tuple[str, str]:
     return caption, tag
 
 
-def _fetch_giphy_gif_url(tag: str) -> str:
-    """Fetches a random GIF URL from Giphy for `tag`; "" if unavailable."""
-    if not settings.giphy_api_key:
-        return ""
-    response = httpx.get(
-        GIPHY_RANDOM_URL,
-        params={"api_key": settings.giphy_api_key, "tag": tag, "rating": "pg-13"},
-        timeout=10,
-    )
-    response.raise_for_status()
-    data = response.json().get("data") or {}
-    # The random endpoint nests the canonical URL under images.original.url and
-    # also exposes a legacy top-level image_url; prefer the former.
-    original = (data.get("images") or {}).get("original") or {}
-    return (original.get("url") or data.get("image_url") or "").strip()
-
-
 def _generate_giphy_reaction_text(
     bot: models.User, post: models.Post, thread_comments: list[tuple[str, str]]
 ) -> str:
@@ -193,7 +173,7 @@ def _generate_giphy_reaction_text(
     )
     raw = "".join(block.text for block in response.content if block.type == "text").strip()
     caption, tag = _parse_caption_and_tag(raw)
-    gif_url = _fetch_giphy_gif_url(tag) if tag else ""
+    gif_url = giphy.fetch_random_gif_url(tag) if tag else ""
     if gif_url:
         return f"{caption}\n{gif_url}" if caption else gif_url
     return caption
