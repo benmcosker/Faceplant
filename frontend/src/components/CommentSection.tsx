@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Avatar, Box, Button, Stack, TextField, Typography } from '@mui/material'
 import { addComment, fetchComments, type Comment } from '../api'
+import { renderBodyWithGifs } from './gifBody'
 
 interface Props {
   postId: number
@@ -53,8 +54,8 @@ export default function CommentSection({ postId, username, onCommentAdded }: Pro
             <Box key={c.id} sx={{ display: 'flex', gap: 1 }}>
               <Avatar src={c.author.avatar_url} sx={{ width: 28, height: 28 }} />
               <Box>
-                <Typography variant="body2">
-                  <strong>{c.author.username}</strong> {c.body}
+                <Typography variant="body2" component="div">
+                  <strong>{c.author.username}</strong> {renderBodyWithGifs(c.body)}
                 </Typography>
               </Box>
             </Box>

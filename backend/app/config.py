@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     admin_api_key: str
     anthropic_api_key: str = ""
     default_bot_model: str = "claude-haiku-4-5"
+    # Used by GIF-first bot personas (roster entries with uses_giphy=True) to
+    # fetch a random reaction GIF by tag. Optional: without it those bots fall
+    # back to a caption-only reply.
+    giphy_api_key: str = ""
 
     short_reaction_window_minutes: int = 5
     long_reaction_window_min_minutes: int = 15

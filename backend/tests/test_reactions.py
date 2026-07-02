@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
+
 from app import models
 from app.bots import reactions
 from app.config import settings
@@ -178,6 +180,119 @@ def test_run_due_reaction_jobs_includes_thread_context_when_comments_exist(clien
     user_prompt = mock_get_client.return_value.messages.create.call_args.kwargs["messages"][0]["content"]
     assert "commenter4" in user_prompt
     assert "first reply in the thread" in user_prompt
+
+
+def _make_jobs_due(post_id, bot_username):
+    db = SessionLocal()
+    try:
+        bot = db.query(models.User).filter(models.User.username == bot_username).first()
+        jobs = (
+            db.query(models.BotReactionJob)
+            .filter(
+                models.BotReactionJob.post_id == post_id,
+                models.BotReactionJob.bot_user_id == bot.id,
+            )
+            .all()
+        )
+        for job in jobs:
+            job.scheduled_for = datetime.utcnow() - timedelta(minutes=1)
+        db.commit()
+    finally:
+        db.close()
+
+
+def _bot_comment_bodies(post_id, bot_username):
+    db = SessionLocal()
+    try:
+        bot = db.query(models.User).filter(models.User.username == bot_username).first()
+        comments = (
+            db.query(models.Comment)
+            .filter(models.Comment.post_id == post_id, models.Comment.user_id == bot.id)
+            .all()
+        )
+        return [c.body for c in comments]
+    finally:
+        db.close()
+
+
+def _giphy_response(url):
+    """A stand-in for httpx.get()'s return value from Giphy's /random endpoint."""
+    return SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: {"data": {"images": {"original": {"url": url}}}},
+    )
+
+
+def test_giphy_bot_posts_gif_url_not_prose(client, avatar_file, admin_headers, monkeypatch):
+    # gifgremlin is a uses_giphy=True persona in the roster, so reactions.py
+    # should branch into the caption + Giphy path for it.
+    _create_bot(client, admin_headers, "gifgremlin")
+    _claim_user(client, "gifhuman", avatar_file)
+    post = client.post("/api/posts", json={"username": "gifhuman", "body": "big news today"}).json()
+    _make_jobs_due(post["id"], "gifgremlin")
+
+    monkeypatch.setattr(settings, "giphy_api_key", "test-giphy-key")
+    gif_url = "https://media3.giphy.com/media/abc123/giphy.gif"
+    fake_model_response = SimpleNamespace(
+        content=[SimpleNamespace(type="text", text='{"caption": "mood", "tag": "mic drop"}')]
+    )
+
+    with patch.object(reactions, "_get_client") as mock_get_client, patch.object(
+        reactions.httpx, "get", return_value=_giphy_response(gif_url)
+    ) as mock_httpx_get:
+        mock_get_client.return_value.messages.create.return_value = fake_model_response
+        reactions.run_due_reaction_jobs()
+
+    # Giphy was queried with the model-chosen tag and the configured key.
+    giphy_kwargs = mock_httpx_get.call_args.kwargs
+    assert mock_httpx_get.call_args.args[0] == reactions.GIPHY_RANDOM_URL
+    assert giphy_kwargs["params"]["tag"] == "mic drop"
+    assert giphy_kwargs["params"]["api_key"] == "test-giphy-key"
+
+    bodies = _bot_comment_bodies(post["id"], "gifgremlin")
+    assert bodies, "expected the gif bot to leave a comment"
+    for body in bodies:
+        # The comment body carries the GIF URL (as its own trailing line), not prose.
+        lines = body.split("\n")
+        assert lines[-1] == gif_url
+        assert lines[-1].startswith("http")
+        assert reactions._parse_caption_and_tag  # sanity: helper is exported
+
+
+def test_giphy_bot_falls_back_to_caption_without_api_key(client, avatar_file, admin_headers, monkeypatch):
+    _create_bot(client, admin_headers, "gifgremlin")
+    _claim_user(client, "gifhuman2", avatar_file)
+    post = client.post("/api/posts", json={"username": "gifhuman2", "body": "no key here"}).json()
+    _make_jobs_due(post["id"], "gifgremlin")
+
+    monkeypatch.setattr(settings, "giphy_api_key", "")
+    fake_model_response = SimpleNamespace(
+        content=[SimpleNamespace(type="text", text='{"caption": "welp", "tag": "shrug"}')]
+    )
+
+    with patch.object(reactions, "_get_client") as mock_get_client, patch.object(
+        reactions.httpx, "get"
+    ) as mock_httpx_get:
+        mock_get_client.return_value.messages.create.return_value = fake_model_response
+        reactions.run_due_reaction_jobs()
+
+    # Without a key, Giphy is never called and we fall back to the caption alone.
+    mock_httpx_get.assert_not_called()
+    bodies = _bot_comment_bodies(post["id"], "gifgremlin")
+    assert bodies and all(body == "welp" for body in bodies)
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ('{"caption": "mood", "tag": "eye roll"}', ("mood", "eye roll")),
+        ('```json\n{"caption": "welp", "tag": "shrug"}\n```', ("welp", "shrug")),
+        ("Sure! {\"caption\": \"lol\", \"tag\": \"popcorn\"}", ("lol", "popcorn")),
+        ("not json at all", ("", "")),
+    ],
+)
+def test_parse_caption_and_tag(raw, expected):
+    assert reactions._parse_caption_and_tag(raw) == expected
 
 
 def test_run_due_reaction_jobs_marks_failed_on_error(client, avatar_file, admin_headers):
