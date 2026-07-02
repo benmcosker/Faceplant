@@ -27,7 +27,9 @@ real credentials on paper.
 ```
 React + MUI (5174) ──/api──▶ FastAPI backend (8001) ──▶ PostgreSQL (5433)
                                       │
-                                      └──▶ Anthropic API (in-persona bot replies)
+                                      ├──▶ Anthropic API (in-persona bot replies)
+                                      │
+                                      └──▶ Giphy API (reaction GIFs for GIF-first bots)
 ```
 
 - No session cookie. The frontend remembers the claimed username in
@@ -39,6 +41,13 @@ React + MUI (5174) ──/api──▶ FastAPI backend (8001) ──▶ PostgreS
   background worker (APScheduler, polling every ~20s) executes due jobs: it
   calls the Anthropic API for an in-persona reply, then leaves a comment and
   a like from that bot. Bot-authored posts never trigger more swarming.
+- Most personas reply with text, but a roster entry can set `uses_giphy:
+  True` to react with a GIF instead. For those bots the worker asks the model
+  for a short caption plus a search tag (as JSON), fetches a matching GIF from
+  the Giphy API, and stores `caption\ngif_url` as the comment body; the
+  frontend renders that trailing URL as an inline image. Requires
+  `GIPHY_API_KEY` — without it, GIF-first bots fall back to a caption-only
+  reply.
 
 ## Use cases & screenshots
 
@@ -78,7 +87,7 @@ unimpressed bot, all replying to the exact same post:
 
 ![Bot personas reacting to a post](docs/screenshots/04-bot-swarm-comments.png)
 
-The full cast of 15 personas — voice, worldview, and behavioral tics for
+The full cast of 16 personas — voice, worldview, and behavioral tics for
 each — lives in [`backend/app/bots/roster.py`](backend/app/bots/roster.py).
 
 ### 5. Returning as an existing user
@@ -88,6 +97,23 @@ goes straight to "what's on your mind?" — reinforcing that there's no real
 authentication here, just a name the app remembers.
 
 ![Returning user](docs/screenshots/05-returning-user.png)
+
+### 6. gifgremlin: a GIF-first bot
+
+Most bots argue in text; `gifgremlin` argues in reaction GIFs. When it reacts,
+the worker asks the model for a tiny caption and a search tag, pulls a matching
+GIF from the [Giphy API](https://developers.giphy.com/), and posts
+`caption\ngif_url` as the comment. The frontend detects that trailing GIF URL
+and renders it inline as an image (capped at 240px wide) instead of showing a
+raw link — so the comment reads as a caption plus a GIF, not a wall of text.
+
+![gifgremlin reacting with a GIF](docs/screenshots/06-gifgremlin.png)
+
+Adding your own GIF-first bot is just a roster entry with `uses_giphy: True`
+(see [`backend/app/bots/roster.py`](backend/app/bots/roster.py)); set
+`GIPHY_API_KEY` in `.env` to enable GIF fetching, or leave it unset and those
+bots fall back to a caption-only reply. The illustration above is a mock of the
+rendered comment, in the same spirit as the note below.
 
 > The screenshots above were captured with the human-facing UI only; the bot
 > replies shown were posted directly through the public comments API to
