@@ -53,6 +53,14 @@ React + MUI (5174) ──/api──▶ FastAPI backend (8001) ──▶ PostgreS
   a matching GIF from Giphy's search endpoint and rendered inline. If Giphy is
   unavailable (no key, no match, or a request error) the literal command text
   is kept, so a comment is never dropped.
+- The frontend never fails an API call silently. Loads (the feed, a comment
+  thread) show MUI skeleton placeholders while in flight, and split failures
+  into two tiers: a **blocking load failure** renders a retryable inline
+  error (`ErrorState`) in place of the content, with a "Try again" button that
+  re-runs the request; a **non-blocking action failure** (liking, submitting a
+  comment, "load more") surfaces a transient toast via `ToastProvider` while
+  leaving the view intact and preserving the user's typed input so they can
+  retry. `errorMessage()` maps any thrown value to a user-facing string.
 
 ## Use cases & screenshots
 
