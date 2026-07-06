@@ -27,6 +27,25 @@ describe('Feed', () => {
     expect(screen.getByText('someone')).toBeInTheDocument()
   })
 
+  it('shows skeleton placeholders while the feed is loading', async () => {
+    let resolvePosts: (posts: Post[]) => void = () => {}
+    vi.mocked(fetchPosts).mockReturnValue(
+      new Promise<Post[]>((resolve) => {
+        resolvePosts = resolve
+      }),
+    )
+
+    render(<Feed username="me" />)
+
+    // While the request is pending, the loading skeletons are shown.
+    expect(screen.getByRole('status', { name: 'Loading posts' })).toBeInTheDocument()
+
+    // Once it resolves, the skeletons give way to the real content.
+    resolvePosts([POST])
+    expect(await screen.findByText('hello world')).toBeInTheDocument()
+    expect(screen.queryByRole('status', { name: 'Loading posts' })).toBeNull()
+  })
+
   it('shows an empty-state message when there are no posts', async () => {
     vi.mocked(fetchPosts).mockResolvedValue([])
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Avatar, Box, Button, Stack, TextField, Typography } from '@mui/material'
 import { addComment, fetchComments, type Comment } from '../api'
 import { renderBodyWithGifs } from './gifBody'
+import CommentSkeleton from './CommentSkeleton'
 
 interface Props {
   postId: number
@@ -45,9 +46,11 @@ export default function CommentSection({ postId, username, onCommentAdded }: Pro
   return (
     <Box sx={{ mt: 2, pl: 2, borderLeft: '2px solid', borderColor: 'divider' }}>
       {loading ? (
-        <Typography variant="body2" color="text.secondary">
-          Loading comments…
-        </Typography>
+        <Stack spacing={1.5} sx={{ mb: 2 }} role="status" aria-label="Loading comments">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <CommentSkeleton key={i} />
+          ))}
+        </Stack>
       ) : (
         <Stack spacing={1.5} sx={{ mb: 2 }}>
           {comments.map((c) => (
