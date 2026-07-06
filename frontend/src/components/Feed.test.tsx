@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Feed from './Feed'
 
 vi.mock('../api', async (importOriginal) => {
@@ -27,6 +28,25 @@ describe('Feed', () => {
     expect(screen.getByText('someone')).toBeInTheDocument()
   })
 
+  it('shows skeleton placeholders while the feed is loading', async () => {
+    let resolvePosts: (posts: Post[]) => void = () => {}
+    vi.mocked(fetchPosts).mockReturnValue(
+      new Promise<Post[]>((resolve) => {
+        resolvePosts = resolve
+      }),
+    )
+
+    render(<Feed username="me" />)
+
+    // While the request is pending, the loading skeletons are shown.
+    expect(screen.getByRole('status', { name: 'Loading posts' })).toBeInTheDocument()
+
+    // Once it resolves, the skeletons give way to the real content.
+    resolvePosts([POST])
+    expect(await screen.findByText('hello world')).toBeInTheDocument()
+    expect(screen.queryByRole('status', { name: 'Loading posts' })).toBeNull()
+  })
+
   it('shows an empty-state message when there are no posts', async () => {
     vi.mocked(fetchPosts).mockResolvedValue([])
 
@@ -41,5 +61,19 @@ describe('Feed', () => {
     render(<Feed username="me" />)
 
     expect(await screen.findByText('nope')).toBeInTheDocument()
+  })
+
+  it('recovers from a load failure when "Try again" is clicked', async () => {
+    vi.mocked(fetchPosts)
+      .mockRejectedValueOnce(new ApiError('nope', 502, 'upstream_error'))
+      .mockResolvedValueOnce([POST])
+
+    render(<Feed username="me" />)
+
+    const retry = await screen.findByRole('button', { name: /try again/i })
+    await userEvent.click(retry)
+
+    expect(await screen.findByText('hello world')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /try again/i })).toBeNull()
   })
 })
