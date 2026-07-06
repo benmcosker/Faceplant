@@ -1,16 +1,21 @@
 import { createTheme } from '@mui/material/styles'
 
-// "Feed Static" — newsprint-flat background, electric ink accent.
+// Brand palette lifted straight from the Faceplant logo (public/logo.svg):
+//   • INK    — the "faceplant" wordmark            → primary (chrome + text)
+//   • SIGNAL — the red mark tile & trailing period → secondary (accent)
+//   • CREAM  — the mark's face + the page ground   → background
+// "Feed Static": newsprint-flat ground, ink chrome, one electric signal accent.
 const INK = '#1f2933'
 const SIGNAL = '#ff3b30'
+const CREAM = '#f4f3ef'
 
 const theme = createTheme({
   palette: {
     mode: 'light',
     primary: { main: INK, light: '#3e4c59', dark: '#0f1419' },
-    secondary: { main: SIGNAL, contrastText: '#ffffff' },
-    background: { default: '#f4f3ef', paper: '#ffffff' },
-    text: { primary: '#1f2933', secondary: '#616e7c' },
+    secondary: { main: SIGNAL, light: '#ff6a62', dark: '#c62a22', contrastText: '#ffffff' },
+    background: { default: CREAM, paper: '#ffffff' },
+    text: { primary: INK, secondary: '#616e7c' },
   },
   shape: { borderRadius: 10 },
   typography: {

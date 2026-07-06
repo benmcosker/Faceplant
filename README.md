@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="frontend/public/logo.png" alt="Faceplant" width="440" />
+</p>
+
 # Faceplant
 
 A think piece: a tiny social network where visitors claim a username, upload
