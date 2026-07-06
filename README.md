@@ -10,6 +10,8 @@ a cast of bot personas (obvious bots, partisan caricatures, etc.) that react
 in character. The point is to see how a feed reads once it's mixed with
 manufactured engagement.
 
+Its not fine.
+.
 This is a standalone app living in its own `faceplant/` directory, with its
 own backend, frontend, database, and dependencies — nothing shared with, or
 imported from, the rest of this repository.
