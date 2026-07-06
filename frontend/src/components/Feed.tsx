@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Alert, Button, Container, Stack } from '@mui/material'
+import { Alert, Box, Button, Container, Stack } from '@mui/material'
 import { ApiError, fetchPosts, type Post } from '../api'
 import PostCard from './PostCard'
+import PostCardSkeleton from './PostCardSkeleton'
 
 interface Props {
   username: string
@@ -37,11 +38,19 @@ export default function Feed({ username }: Props) {
       {!loading && posts.length === 0 && !error && (
         <Alert severity="info">No posts yet. Be the first.</Alert>
       )}
-      <Stack>
-        {posts.map((post) => (
-          <PostCard key={post.id} post={post} username={username} />
-        ))}
-      </Stack>
+      {loading ? (
+        <Box role="status" aria-label="Loading posts">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <PostCardSkeleton key={i} />
+          ))}
+        </Box>
+      ) : (
+        <Stack>
+          {posts.map((post) => (
+            <PostCard key={post.id} post={post} username={username} />
+          ))}
+        </Stack>
+      )}
       {hasMore && posts.length > 0 && (
         <Button fullWidth onClick={loadMore}>
           Load more
