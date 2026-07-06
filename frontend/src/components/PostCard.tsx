@@ -3,9 +3,10 @@ import { Avatar, Box, Button, Card, CardContent, Stack, Typography } from '@mui/
 import FavoriteIcon from '@mui/icons-material/Favorite'
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutlined'
-import { toggleLike, type Post } from '../api'
+import { errorMessage, toggleLike, type Post } from '../api'
 import CommentSection from './CommentSection'
 import { renderBodyWithGifs } from './gifBody'
+import { useToast } from './ToastProvider'
 
 interface Props {
   post: Post
@@ -13,15 +14,20 @@ interface Props {
 }
 
 export default function PostCard({ post, username }: Props) {
+  const toast = useToast()
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(post.like_count)
   const [commentCount, setCommentCount] = useState(post.comment_count)
   const [showComments, setShowComments] = useState(false)
 
   async function handleLike() {
-    const result = await toggleLike(post.id, username)
-    setLiked(result.liked)
-    setLikeCount(result.count)
+    try {
+      const result = await toggleLike(post.id, username)
+      setLiked(result.liked)
+      setLikeCount(result.count)
+    } catch (err) {
+      toast.error(errorMessage(err))
+    }
   }
 
   return (
