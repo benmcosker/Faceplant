@@ -9,7 +9,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { ApiError, claimUser, createPost, fetchUser, setIdentity } from '../api'
+import { claimUser, createPost, errorMessage, fetchUser, setIdentity } from '../api'
 
 interface Props {
   onIdentityResolved: (username: string) => void
@@ -39,7 +39,7 @@ export default function IdentityGate({ onIdentityResolved }: Props) {
       const existing = await fetchUser(username.trim())
       setStep(existing ? 'returning' : 'new')
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong.')
+      setError(errorMessage(err))
     } finally {
       setLoading(false)
     }
@@ -62,7 +62,7 @@ export default function IdentityGate({ onIdentityResolved }: Props) {
       setIdentity(username.trim().toLowerCase())
       onIdentityResolved(username.trim().toLowerCase())
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Something went wrong.')
+      setError(errorMessage(err))
     } finally {
       setLoading(false)
     }

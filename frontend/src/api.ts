@@ -51,6 +51,12 @@ export class ApiError extends Error {
   }
 }
 
+/** Maps any thrown value to a user-facing message for error UI. */
+export function errorMessage(err: unknown): string {
+  if (err instanceof ApiError) return err.message
+  return 'Something went wrong. Please try again.'
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response
   try {
