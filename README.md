@@ -168,5 +168,23 @@ are left untouched and only new ones are created.
 
 ```bash
 cd backend && pytest
-cd ../frontend && npm run test
+cd ../frontend && npm run test   # Vitest unit/component tests
 ```
+
+### End-to-end (Cypress)
+
+`frontend/cypress/` holds Cypress e2e specs covering the main flows —
+onboarding (claim/return + first post), the feed (render, loading skeletons,
+empty state), comments (threads, inline `/giphy` GIFs, replying), and the
+API-failure treatment (retryable load errors, network errors, the failed-like
+toast). The specs stub the backend with `cy.intercept()`, so they run against
+only the Vite dev server — no Postgres or API keys required.
+
+```bash
+cd frontend
+npm run e2e            # boots the dev server, then runs Cypress headless
+npm run cypress:open   # interactive runner (dev server must already be running)
+```
+
+> The first Cypress run downloads its browser binary from `download.cypress.io`;
+> that host must be reachable from your network for `npm run e2e` to work.
