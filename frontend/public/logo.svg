@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" width="360" height="80" role="img" aria-label="Faceplant">
+  <title>Faceplant</title>
+  <g transform="translate(8,8)">
+    <rect x="2" y="2" width="60" height="60" rx="15" fill="#ff3b30"/>
+    <g stroke="#f4f3ef" stroke-width="5" stroke-linecap="round" fill="none">
+      <path d="M17 20 L27 30 M27 20 L17 30"/>
+      <path d="M37 20 L47 30 M47 20 L37 30"/>
+      <path d="M22 44 H42"/>
+    </g>
+  </g>
+  <text x="88" y="53" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="44" font-weight="800" letter-spacing="-1.5" fill="#1f2933">faceplant<tspan fill="#ff3b30">.</tspan></text>
+</svg>

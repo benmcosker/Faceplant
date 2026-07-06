@@ -14,6 +14,12 @@ export default function AppShell({ username, onSwitchUser, children }: Props) {
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
       <AppBar position="static">
         <Toolbar sx={{ gap: 1 }}>
+          <Box
+            component="img"
+            src="/logo-mark.svg"
+            alt=""
+            sx={{ width: 30, height: 30, display: 'block' }}
+          />
           <Typography variant="h6" sx={{ fontWeight: 800, flexGrow: 1 }}>
             faceplant
           </Typography>
