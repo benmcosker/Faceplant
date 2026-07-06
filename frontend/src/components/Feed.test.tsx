@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import Feed from './Feed'
 
 vi.mock('../api', async (importOriginal) => {
@@ -60,5 +61,19 @@ describe('Feed', () => {
     render(<Feed username="me" />)
 
     expect(await screen.findByText('nope')).toBeInTheDocument()
+  })
+
+  it('recovers from a load failure when "Try again" is clicked', async () => {
+    vi.mocked(fetchPosts)
+      .mockRejectedValueOnce(new ApiError('nope', 502, 'upstream_error'))
+      .mockResolvedValueOnce([POST])
+
+    render(<Feed username="me" />)
+
+    const retry = await screen.findByRole('button', { name: /try again/i })
+    await userEvent.click(retry)
+
+    expect(await screen.findByText('hello world')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /try again/i })).toBeNull()
   })
 })

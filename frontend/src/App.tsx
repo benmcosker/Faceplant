@@ -3,6 +3,7 @@ import { clearIdentity, getIdentity } from './api'
 import AppShell from './components/AppShell'
 import IdentityGate from './components/IdentityGate'
 import Feed from './components/Feed'
+import { ToastProvider } from './components/ToastProvider'
 
 function App() {
   const [username, setUsername] = useState<string | null>(getIdentity())
@@ -13,9 +14,11 @@ function App() {
   }
 
   return (
-    <AppShell username={username} onSwitchUser={handleSwitchUser}>
-      {username ? <Feed username={username} /> : <IdentityGate onIdentityResolved={setUsername} />}
-    </AppShell>
+    <ToastProvider>
+      <AppShell username={username} onSwitchUser={handleSwitchUser}>
+        {username ? <Feed username={username} /> : <IdentityGate onIdentityResolved={setUsername} />}
+      </AppShell>
+    </ToastProvider>
   )
 }
 

@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Avatar, Box, Button, Stack, TextField, Typography } from '@mui/material'
-import { addComment, fetchComments, type Comment } from '../api'
+import { addComment, errorMessage, fetchComments, type Comment } from '../api'
 import { renderBodyWithGifs } from './gifBody'
 import CommentSkeleton from './CommentSkeleton'
+import ErrorState from './ErrorState'
+import { useToast } from './ToastProvider'
 
 interface Props {
   postId: number
@@ -11,23 +13,32 @@ interface Props {
 }
 
 export default function CommentSection({ postId, username, onCommentAdded }: Props) {
+  const toast = useToast()
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [retryKey, setRetryKey] = useState(0)
   const [body, setBody] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    fetchComments(postId).then((data) => {
-      if (!cancelled) {
-        setComments(data)
-        setLoading(false)
-      }
-    })
+    setLoading(true)
+    setError(null)
+    fetchComments(postId)
+      .then((data) => {
+        if (!cancelled) setComments(data)
+      })
+      .catch((err) => {
+        if (!cancelled) setError(errorMessage(err))
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
     return () => {
       cancelled = true
     }
-  }, [postId])
+  }, [postId, retryKey])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -38,6 +49,9 @@ export default function CommentSection({ postId, username, onCommentAdded }: Pro
       setComments((prev) => [...prev, comment])
       setBody('')
       onCommentAdded()
+    } catch (err) {
+      // Keep the typed text so the user can retry the failed reply.
+      toast.error(errorMessage(err))
     } finally {
       setSubmitting(false)
     }
@@ -51,6 +65,10 @@ export default function CommentSection({ postId, username, onCommentAdded }: Pro
             <CommentSkeleton key={i} />
           ))}
         </Stack>
+      ) : error ? (
+        <Box sx={{ mb: 2 }}>
+          <ErrorState compact message={error} onRetry={() => setRetryKey((k) => k + 1)} />
+        </Box>
       ) : (
         <Stack spacing={1.5} sx={{ mb: 2 }}>
           {comments.map((c) => (
