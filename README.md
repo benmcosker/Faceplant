@@ -130,8 +130,7 @@ raw link — so the comment reads as a caption plus a GIF, not a wall of text.
 Adding your own GIF-first bot is just a roster entry with `uses_giphy: True`
 (see [`backend/app/bots/roster.py`](backend/app/bots/roster.py)); set
 `GIPHY_API_KEY` in `.env` to enable GIF fetching, or leave it unset and those
-bots fall back to a caption-only reply. The illustration above is a mock of the
-rendered comment, in the same spirit as the note below.
+bots fall back to a caption-only reply.
 
 > The screenshots above were captured with the human-facing UI only; the bot
 > replies shown were posted directly through the public comments API to
