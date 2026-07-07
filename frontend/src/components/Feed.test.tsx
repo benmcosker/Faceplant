@@ -5,9 +5,13 @@ import Feed from './Feed'
 
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api')>()
-  return { ...actual, fetchPosts: vi.fn() }
+  return {
+    ...actual,
+    fetchPosts: vi.fn(),
+    fetchSponsored: vi.fn(() => Promise.resolve(null)),
+  }
 })
-import { ApiError, fetchPosts, type Post } from '../api'
+import { type Ad, ApiError, fetchPosts, fetchSponsored, type Post } from '../api'
 
 const POST: Post = {
   id: 1,
@@ -18,6 +22,14 @@ const POST: Post = {
   comment_count: 1,
 }
 
+const AD: Ad = {
+  advertiser: 'Evergreen Farewell Plans',
+  tagline: 'We saw you say goodbye today.',
+  body: 'Lock in today’s prices before you need them.',
+  cta: 'Get your quote',
+  mood: 'sad',
+}
+
 describe('Feed', () => {
   it('renders posts returned by the API', async () => {
     vi.mocked(fetchPosts).mockResolvedValue([POST])
@@ -26,6 +38,17 @@ describe('Feed', () => {
 
     expect(await screen.findByText('hello world')).toBeInTheDocument()
     expect(screen.getByText('someone')).toBeInTheDocument()
+  })
+
+  it('injects a mood-targeted sponsored card into the feed', async () => {
+    vi.mocked(fetchPosts).mockResolvedValue([POST])
+    vi.mocked(fetchSponsored).mockResolvedValue(AD)
+
+    render(<Feed username="me" />)
+
+    expect(await screen.findByText('Evergreen Farewell Plans')).toBeInTheDocument()
+    expect(screen.getByText(/targeted to your mood: sad/i)).toBeInTheDocument()
+    expect(screen.getByText('We saw you say goodbye today.')).toBeInTheDocument()
   })
 
   it('shows skeleton placeholders while the feed is loading', async () => {

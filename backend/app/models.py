@@ -21,6 +21,9 @@ class User(Base):
     persona: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Which LLM generates this bot's reactions, e.g. "claude-haiku-4-5".
     bot_model: Mapped[str | None] = mapped_column(String, nullable=True)
+    # The platform's surveillance profile: the emotional tone of this user's most
+    # recent post, classified on each post and used to target "sponsored" ads.
+    mood: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 

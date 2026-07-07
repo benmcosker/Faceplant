@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import { Alert, Box, Button, Container, Stack } from '@mui/material'
-import { errorMessage, fetchPosts, type Post } from '../api'
+import { type Ad, errorMessage, fetchPosts, fetchSponsored, type Post } from '../api'
 import PostCard from './PostCard'
 import PostCardSkeleton from './PostCardSkeleton'
+import SponsoredCard from './SponsoredCard'
 import ErrorState from './ErrorState'
 import { useToast } from './ToastProvider'
 
@@ -17,6 +18,7 @@ export default function Feed({ username }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [ad, setAd] = useState<Ad | null>(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -33,6 +35,18 @@ export default function Feed({ username }: Props) {
   useEffect(() => {
     load()
   }, [load])
+
+  // The platform's targeted "sponsored" post, keyed to this viewer's profiled
+  // mood. Best-effort — fetchSponsored never throws, just yields null.
+  useEffect(() => {
+    let cancelled = false
+    fetchSponsored(username).then((a) => {
+      if (!cancelled) setAd(a)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [username])
 
   // A failed "load more" is non-blocking — the feed above it is still valid —
   // so it's surfaced as a toast rather than replacing the whole view.
@@ -68,8 +82,12 @@ export default function Feed({ username }: Props) {
             </Box>
           ) : (
             <Stack>
-              {posts.map((post) => (
-                <PostCard key={post.id} post={post} username={username} />
+              {posts.map((post, i) => (
+                <Fragment key={post.id}>
+                  <PostCard post={post} username={username} />
+                  {/* Slot the targeted ad into the feed after the first post. */}
+                  {i === 0 && ad && <SponsoredCard ad={ad} />}
+                </Fragment>
               ))}
             </Stack>
           )}
