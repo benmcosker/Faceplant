@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from .bots.reactions import run_due_reaction_jobs
 from .config import settings
 from .db import Base, engine
-from .routers import admin_bots, comments, likes, posts, users
+from .routers import admin_bots, ads, comments, likes, posts, users
 
 Base.metadata.create_all(engine)
 
@@ -45,6 +45,7 @@ app.include_router(posts.router)
 app.include_router(comments.router)
 app.include_router(likes.router)
 app.include_router(admin_bots.router)
+app.include_router(ads.router)
 
 
 @app.exception_handler(HTTPException)

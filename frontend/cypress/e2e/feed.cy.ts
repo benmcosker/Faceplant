@@ -30,6 +30,29 @@ describe('feed', () => {
     cy.wait('@feed')
     cy.contains('No posts yet. Be the first.')
   })
+
+  it('slots a mood-targeted sponsored post into the feed', () => {
+    cy.intercept('GET', '/api/posts*', { fixture: 'feed.json' }).as('feed')
+    cy.intercept('GET', '/api/sponsored*', {
+      statusCode: 200,
+      body: {
+        advertiser: 'Evergreen Farewell Plans',
+        tagline: 'We saw you say goodbye this morning.',
+        body: 'Lock in today’s prices before you need them.',
+        cta: 'Get your quote',
+        mood: 'sad',
+      },
+    }).as('sponsored')
+
+    cy.visitAs('maya')
+    cy.wait('@feed')
+    cy.wait('@sponsored')
+
+    cy.contains(/targeted to your mood: sad/i)
+    cy.contains('Evergreen Farewell Plans')
+    cy.contains('button', 'Get your quote').click()
+    cy.contains("This ad isn't real. The targeting is.") // fourth-wall toast
+  })
 })
 
 export {}

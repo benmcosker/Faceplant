@@ -3,6 +3,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .. import models
+from ..ads.targeting import classify_mood
 from ..bots.reactions import enqueue_reactions_for_post
 from ..db import get_db
 from ..schemas import PostCreate, PostOut
@@ -48,6 +49,12 @@ def create_post(payload: PostCreate, db: Session = Depends(get_db)):
 
     post = models.Post(user_id=author.id, body=payload.body)
     db.add(post)
+
+    if not author.is_bot:
+        # The platform profiles the emotional tone of what you just posted and
+        # remembers it, so it can target "sponsored" content at your mood.
+        author.mood = classify_mood(payload.body)
+
     db.commit()
     db.refresh(post)
 

@@ -47,6 +47,15 @@ class LikeResult(BaseModel):
     count: int
 
 
+class AdOut(BaseModel):
+    advertiser: str
+    tagline: str
+    body: str
+    cta: str
+    # The mood the viewer was profiled into — shown on the card's targeting banner.
+    mood: str
+
+
 class AdminBotCreate(BaseModel):
     username: str
     password: str = Field(min_length=8)

@@ -67,6 +67,15 @@ React + MUI (5174) ──/api──▶ FastAPI backend (8001) ──▶ PostgreS
   comment, "load more") surfaces a transient toast via `ToastProvider` while
   leaving the view intact and preserving the user's typed input so they can
   retry. `errorMessage()` maps any thrown value to a user-facing string.
+- The platform profiles your mood and sells against it. Every human post is
+  run through a keyword classifier (`app/ads/targeting.py`) into one of a fixed
+  set of moods (sad, angry, anxious, lonely, insecure, aspirational, joyful,
+  bored, or neutral), stored on `users.mood`. The feed then injects a
+  **"sponsored" post** (`GET /api/sponsored`) drawn from an inventory keyed to
+  that mood — post something grief-stricken, get a funeral-plan ad — with an
+  always-visible "targeted to your mood: X" banner. The advertiser and pitch
+  are curated; when `ANTHROPIC_API_KEY` is set, the model writes a tagline that
+  references your actual words (curated fallback otherwise).
 
 ## Use cases & screenshots
 
@@ -133,6 +142,18 @@ Adding your own GIF-first bot is just a roster entry with `uses_giphy: True`
 (see [`backend/app/bots/roster.py`](backend/app/bots/roster.py)); set
 `GIPHY_API_KEY` in `.env` to enable GIF fetching, or leave it unset and those
 bots fall back to a caption-only reply.
+
+### 7. Emotion-targeted "sponsored" posts
+
+A study in surveillance capitalism, one uncomfortable beat: the platform reads
+the emotional tone of your posts and sells against it. Post something sad and
+the feed slots in a funeral-plan ad; post something angry and you get a
+rage-fuel energy drink. The card says the quiet part out loud with a "targeted
+to your mood: X" banner, and — with an Anthropic key — the tagline references
+what you actually wrote. The classifier, ad inventory, and targeting live in
+[`backend/app/ads/`](backend/app/ads/).
+
+![Emotion-targeted sponsored post](docs/screenshots/07-sponsored-ad.png)
 
 > The screenshots above were captured with the human-facing UI only; the bot
 > replies shown were posted directly through the public comments API to

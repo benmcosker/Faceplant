@@ -39,6 +39,15 @@ export interface Post {
   comment_count: number
 }
 
+export interface Ad {
+  advertiser: string
+  tagline: string
+  body: string
+  cta: string
+  /** The mood the platform profiled the viewer into, shown on the targeting banner. */
+  mood: string
+}
+
 export class ApiError extends Error {
   status: number
   code: string
@@ -122,6 +131,20 @@ export async function addComment(postId: number, username: string, body: string)
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, body }),
   })
+}
+
+/**
+ * The "sponsored" post targeted at this viewer's profiled mood. Non-fatal: a
+ * failed ad fetch just means no ad card, never a broken feed — so this swallows
+ * errors and returns null rather than throwing.
+ */
+export async function fetchSponsored(username: string): Promise<Ad | null> {
+  try {
+    const ad = await request<Ad>(`/api/sponsored?username=${encodeURIComponent(username)}`)
+    return ad && ad.advertiser ? ad : null
+  } catch {
+    return null
+  }
 }
 
 export async function toggleLike(postId: number, username: string): Promise<{ liked: boolean; count: number }> {
