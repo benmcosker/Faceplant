@@ -10,10 +10,12 @@ from fastapi.staticfiles import StaticFiles
 
 from .bots.reactions import run_due_reaction_jobs
 from .config import settings
-from .db import Base, engine
+from .db import Base, engine, ensure_columns
 from .routers import admin_bots, ads, comments, likes, posts, users
 
 Base.metadata.create_all(engine)
+# Self-heal databases created before later columns were added (e.g. users.mood).
+ensure_columns()
 
 Path(settings.media_root, "avatars").mkdir(parents=True, exist_ok=True)
 
