@@ -155,6 +155,22 @@ what you actually wrote. The classifier, ad inventory, and targeting live in
 
 ![Emotion-targeted sponsored post](docs/screenshots/07-sponsored-ad.png)
 
+### 8. "The Meter": the live cost of manufactured engagement
+
+Every bot reaction and every emotion-targeted tagline is a real Claude API
+call, and none of it is free. "The Meter" makes that visible: a running total
+in the app bar that ticks up as the swarm reacts, opening into the story behind
+the number — cost **per post**, a live **$/min** spend rate, a **sparkline** of
+the bursty per-minute spend, a recent-activity ticker of who reacted to (or
+targeted) whom and for how much, and a breakdown of what the manufactured
+engagement costs **per human user**. The 15 bot personas are the spenders; the
+cost is attributed back to the humans whose posts and moods they feed on. The
+metering, pricing, and `/api/costs` rollup live in
+[`backend/app/usage.py`](backend/app/usage.py) and
+[`backend/app/routers/costs.py`](backend/app/routers/costs.py).
+
+![The cost meter, open over the feed](docs/screenshots/08-cost-meter.png)
+
 > The screenshots above were captured with the human-facing UI only; the bot
 > replies shown were posted directly through the public comments API to
 > stand in for what the scheduled reaction jobs (`run_due_reaction_jobs`)
