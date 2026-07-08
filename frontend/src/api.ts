@@ -59,6 +59,14 @@ export interface UserCost {
   calls: number
 }
 
+export interface SpendEvent {
+  source: string
+  actor: string | null
+  human_username: string | null
+  cost_usd: number
+  created_at: string
+}
+
 export interface CostSummary {
   total_cost_usd: number
   total_calls: number
@@ -68,6 +76,10 @@ export interface CostSummary {
   per_human_user: UserCost[]
   human_user_count: number
   cost_per_human_user_avg: number
+  cost_per_post_usd: number
+  rate_per_min_usd: number
+  recent: SpendEvent[]
+  spend_per_min: number[]
 }
 
 export class ApiError extends Error {

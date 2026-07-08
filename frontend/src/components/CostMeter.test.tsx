@@ -24,6 +24,13 @@ const SUMMARY: CostSummary = {
   ],
   human_user_count: 2,
   cost_per_human_user_avg: 0.0117,
+  cost_per_post_usd: 0.0039,
+  rate_per_min_usd: 0.0021,
+  recent: [
+    { source: 'ad_tagline', actor: 'Evergreen Farewell Plans', human_username: 'maya', cost_usd: 0.0007, created_at: '2026-07-08T00:00:00Z' },
+    { source: 'bot_reaction', actor: 'gifgremlin', human_username: 'jordan', cost_usd: 0.0006, created_at: '2026-07-08T00:00:01Z' },
+  ],
+  spend_per_min: [0, 0, 0.001, 0.003, 0.0007, 0, 0.002, 0, 0, 0.0005, 0, 0, 0.001, 0.004, 0.0021],
 }
 
 describe('CostMeter', () => {
@@ -43,6 +50,15 @@ describe('CostMeter', () => {
     expect(screen.getByText(/across 2 humans/)).toBeInTheDocument()
     expect(screen.getByText('maya')).toBeInTheDocument()
     expect(screen.getByText('jordan')).toBeInTheDocument()
+
+    // Phase 2 storytelling layer: derived stats + recent-spend ticker.
+    expect(screen.getByText('per post')).toBeInTheDocument()
+    expect(screen.getByText('$0.0039')).toBeInTheDocument()
+    expect(screen.getByText('spend rate')).toBeInTheDocument()
+    expect(screen.getByText('Recent activity')).toBeInTheDocument()
+    expect(screen.getByText('Evergreen Farewell Plans targeted maya')).toBeInTheDocument()
+    expect(screen.getByText('gifgremlin reacted to jordan')).toBeInTheDocument()
+    expect(screen.getByText('+$0.0007')).toBeInTheDocument()
   })
 
   it('renders $0.0000 before any data arrives', () => {

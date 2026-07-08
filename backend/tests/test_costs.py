@@ -67,6 +67,11 @@ def test_costs_endpoint_empty(client):
     assert body["total_calls"] == 0
     assert body["per_human_user"] == []
     assert body["cost_per_human_user_avg"] == 0.0
+    # Phase 2 storytelling fields are present and empty-safe.
+    assert body["cost_per_post_usd"] == 0.0
+    assert body["rate_per_min_usd"] == 0.0
+    assert body["recent"] == []
+    assert body["spend_per_min"] == [0.0] * 15
 
 
 def test_costs_endpoint_aggregates_and_attributes(client, avatar_file):
@@ -97,6 +102,51 @@ def test_costs_endpoint_aggregates_and_attributes(client, avatar_file):
     assert body["per_human_user"][0]["username"] == "spender"
     assert body["per_human_user"][0]["cost_usd"] == pytest.approx(0.0047)
     assert body["cost_per_human_user_avg"] == pytest.approx(0.0047)
+
+
+def test_costs_endpoint_storytelling_layer(client, avatar_file):
+    human = _claim_user(client, "storyteller", avatar_file)
+    now = datetime.utcnow()
+    db = SessionLocal()
+    try:
+        # Two reactions on post 1, one on post 2 — all recent (this minute).
+        db.add(models.TokenUsage(source="bot_reaction", model="claude-haiku-4-5",
+                                 input_tokens=1000, output_tokens=200, cost_usd=0.002,
+                                 human_user_id=human["id"], post_id=1, actor="gifgremlin",
+                                 created_at=now - timedelta(seconds=10)))
+        db.add(models.TokenUsage(source="bot_reaction", model="claude-haiku-4-5",
+                                 input_tokens=1000, output_tokens=200, cost_usd=0.002,
+                                 human_user_id=human["id"], post_id=1, actor="doomscroller",
+                                 created_at=now - timedelta(seconds=5)))
+        db.add(models.TokenUsage(source="ad_tagline", model="claude-haiku-4-5",
+                                 input_tokens=500, output_tokens=40, cost_usd=0.0007,
+                                 human_user_id=human["id"], post_id=2, actor="Evergreen Farewell Plans",
+                                 created_at=now - timedelta(seconds=2)))
+        # An older row (12 minutes ago) — counts toward totals + sparkline, not the $/min rate.
+        db.add(models.TokenUsage(source="bot_reaction", model="claude-haiku-4-5",
+                                 input_tokens=1000, output_tokens=200, cost_usd=0.002,
+                                 human_user_id=human["id"], post_id=3, actor="oldbot",
+                                 created_at=now - timedelta(minutes=12)))
+        db.commit()
+    finally:
+        db.close()
+
+    body = client.get("/api/costs").json()
+
+    # Cost per post: total 0.0067 across 3 distinct posts.
+    assert body["cost_per_post_usd"] == pytest.approx(0.0067 / 3, abs=1e-6)
+    # $/min rate: only the three sub-minute rows (0.002 + 0.002 + 0.0007).
+    assert body["rate_per_min_usd"] == pytest.approx(0.0047)
+    # Ticker: newest first, with actor + human resolved.
+    assert len(body["recent"]) == 4
+    assert body["recent"][0]["actor"] == "Evergreen Farewell Plans"
+    assert body["recent"][0]["human_username"] == "storyteller"
+    assert body["recent"][0]["source"] == "ad_tagline"
+    # Sparkline: 15 one-minute buckets; the last holds this minute's three calls.
+    spark = body["spend_per_min"]
+    assert len(spark) == 15
+    assert spark[-1] == pytest.approx(0.0047)
+    assert sum(spark) == pytest.approx(0.0067)
 
 
 def test_bot_reaction_records_metered_cost(client, avatar_file, admin_headers):
