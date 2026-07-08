@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from anthropic import Anthropic
 from sqlalchemy.orm import Session
 
-from .. import giphy, models
+from .. import giphy, models, usage
 from ..config import settings
 from ..db import SessionLocal
 from .roster import ROSTER
@@ -108,7 +108,9 @@ def _get_recent_comments(db: Session, post_id: int, limit: int = THREAD_CONTEXT_
 
 def _generate_reaction_text(
     bot: models.User, post: models.Post, thread_comments: list[tuple[str, str]] | None = None
-) -> str:
+):
+    """Returns (reply_text, api_response). The response carries token usage for
+    the cost meter; it's None only if no API call was made."""
     if bot.username in _USES_GIPHY_BY_USERNAME:
         return _generate_giphy_reaction_text(bot, post, thread_comments or [])
     client = _get_client()
@@ -118,7 +120,8 @@ def _generate_reaction_text(
         system=_build_system_prompt(bot),
         messages=[{"role": "user", "content": _build_user_prompt(post, thread_comments or [])}],
     )
-    return "".join(block.text for block in response.content if block.type == "text").strip()
+    text = "".join(block.text for block in response.content if block.type == "text").strip()
+    return text, response
 
 
 def _build_giphy_system_prompt(bot: models.User) -> str:
@@ -158,11 +161,12 @@ def _parse_caption_and_tag(raw: str) -> tuple[str, str]:
 
 def _generate_giphy_reaction_text(
     bot: models.User, post: models.Post, thread_comments: list[tuple[str, str]]
-) -> str:
+):
     """A GIF-first reaction: model picks a caption + tag, Giphy supplies the GIF.
 
-    Returns a ``caption\\ngif_url`` body (the frontend renders the trailing URL
-    as an inline image). Falls back to caption-only if no GIF is available.
+    Returns ``(caption\\ngif_url, api_response)`` (the frontend renders the
+    trailing URL as an inline image). Falls back to caption-only if no GIF is
+    available. The response carries token usage for the cost meter.
     """
     client = _get_client()
     response = client.messages.create(
@@ -175,8 +179,10 @@ def _generate_giphy_reaction_text(
     caption, tag = _parse_caption_and_tag(raw)
     gif_url = giphy.fetch_random_gif_url(tag) if tag else ""
     if gif_url:
-        return f"{caption}\n{gif_url}" if caption else gif_url
-    return caption
+        text = f"{caption}\n{gif_url}" if caption else gif_url
+    else:
+        text = caption
+    return text, response
 
 
 def run_due_reaction_jobs() -> None:
@@ -199,9 +205,21 @@ def run_due_reaction_jobs() -> None:
                 continue
             try:
                 thread_comments = _get_recent_comments(db, post.id)
-                text = _generate_reaction_text(bot, post, thread_comments)
+                text, response = _generate_reaction_text(bot, post, thread_comments)
                 if text:
                     db.add(models.Comment(post_id=post.id, user_id=bot.id, body=text))
+                # Meter the tokens this reaction spent, attributed to the human
+                # whose post the swarm is reacting to.
+                if response is not None:
+                    usage.record(
+                        db,
+                        source="bot_reaction",
+                        model=bot.bot_model or settings.default_bot_model,
+                        response=response,
+                        human_user_id=post.user_id,
+                        post_id=post.id,
+                        actor=bot.username,
+                    )
                 already_liked = (
                     db.query(models.Like)
                     .filter(models.Like.post_id == post.id, models.Like.user_id == bot.id)

@@ -31,7 +31,16 @@ def get_sponsored(username: str = Query(...), db: Session = Depends(get_db)):
         .order_by(models.Post.id.desc())
         .first()
     )
-    tagline = build_tagline(ad, latest_post.body if latest_post else "", mood)
+    tagline = build_tagline(
+        ad,
+        latest_post.body if latest_post else "",
+        mood,
+        db=db,
+        human_user_id=user.id,
+        post_id=latest_post.id if latest_post else None,
+    )
+    # build_tagline may have recorded ad-generation token usage on this session.
+    db.commit()
 
     return AdOut(
         advertiser=ad["advertiser"],

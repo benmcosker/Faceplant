@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from .bots.reactions import run_due_reaction_jobs
 from .config import settings
 from .db import Base, engine, ensure_columns
-from .routers import admin_bots, ads, comments, likes, posts, users
+from .routers import admin_bots, ads, comments, costs, likes, posts, users
 
 Base.metadata.create_all(engine)
 # Self-heal databases created before later columns were added (e.g. users.mood).
@@ -48,6 +48,7 @@ app.include_router(comments.router)
 app.include_router(likes.router)
 app.include_router(admin_bots.router)
 app.include_router(ads.router)
+app.include_router(costs.router)
 
 
 @app.exception_handler(HTTPException)
