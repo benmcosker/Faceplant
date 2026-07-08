@@ -12,7 +12,9 @@ import random
 import re
 
 from anthropic import Anthropic
+from sqlalchemy.orm import Session
 
+from .. import usage
 from ..config import settings
 from .inventory import ADS, MOOD_LEXICON, MOODS
 
@@ -63,10 +65,14 @@ def select_ad(mood: str) -> dict:
     return random.choice(matches)
 
 
-def _build_llm_tagline(ad: dict, post_body: str, mood: str) -> str | None:
-    """Has the model write a tagline that nods at the post; None on any failure."""
+def _build_llm_tagline(ad: dict, post_body: str, mood: str):
+    """Has the model write a tagline that nods at the post.
+
+    Returns ``(tagline, api_response)`` — ``(None, None)`` on no key / no post /
+    failure. The response carries token usage for the cost meter.
+    """
     if not settings.anthropic_api_key or not post_body:
-        return None
+        return None, None
     system = (
         "You are a cynical ad copywriter for a surveillance-capitalism ad network. "
         "Given a user's social media post and the product being advertised, write ONE "
@@ -88,12 +94,36 @@ def _build_llm_tagline(ad: dict, post_body: str, mood: str) -> str | None:
         )
         text = "".join(b.text for b in response.content if b.type == "text").strip()
         # Strip stray wrapping quotes the model sometimes adds.
-        return text.strip('"').strip() or None
+        return (text.strip('"').strip() or None), response
     except Exception:
         logger.exception("ad tagline generation failed for %s", ad["advertiser"])
-        return None
+        return None, None
 
 
-def build_tagline(ad: dict, post_body: str, mood: str) -> str:
-    """The personalized tagline (LLM) or the ad's curated fallback."""
-    return _build_llm_tagline(ad, post_body, mood) or ad["tagline"]
+def build_tagline(
+    ad: dict,
+    post_body: str,
+    mood: str,
+    *,
+    db: Session | None = None,
+    human_user_id: int | None = None,
+    post_id: int | None = None,
+) -> str:
+    """The personalized tagline (LLM) or the ad's curated fallback.
+
+    When a `db` session is provided and an LLM call is made, the call's token
+    usage is recorded (attributed to `human_user_id`) for the cost meter. The
+    caller is responsible for committing.
+    """
+    tagline, response = _build_llm_tagline(ad, post_body, mood)
+    if response is not None and db is not None:
+        usage.record(
+            db,
+            source="ad_tagline",
+            model=settings.default_bot_model,
+            response=response,
+            human_user_id=human_user_id,
+            post_id=post_id,
+            actor=ad["advertiser"],
+        )
+    return tagline or ad["tagline"]

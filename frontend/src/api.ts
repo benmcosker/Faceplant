@@ -48,6 +48,28 @@ export interface Ad {
   mood: string
 }
 
+export interface SourceCost {
+  cost_usd: number
+  calls: number
+}
+
+export interface UserCost {
+  username: string
+  cost_usd: number
+  calls: number
+}
+
+export interface CostSummary {
+  total_cost_usd: number
+  total_calls: number
+  input_tokens: number
+  output_tokens: number
+  by_source: Record<string, SourceCost>
+  per_human_user: UserCost[]
+  human_user_count: number
+  cost_per_human_user_avg: number
+}
+
 export class ApiError extends Error {
   status: number
   code: string
@@ -142,6 +164,18 @@ export async function fetchSponsored(username: string): Promise<Ad | null> {
   try {
     const ad = await request<Ad>(`/api/sponsored?username=${encodeURIComponent(username)}`)
     return ad && ad.advertiser ? ad : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * "The Meter": the running estimated Claude spend behind the feed. Non-fatal —
+ * a failed poll just leaves the meter stale, never disrupts the app.
+ */
+export async function fetchCosts(): Promise<CostSummary | null> {
+  try {
+    return await request<CostSummary>('/api/costs')
   } catch {
     return null
   }
