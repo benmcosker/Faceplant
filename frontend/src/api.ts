@@ -37,6 +37,8 @@ export interface Post {
   author: User
   like_count: number
   comment_count: number
+  /** The first few replies, for an inline "peek" of the swarm in the feed. */
+  top_comments: Comment[]
 }
 
 export interface Ad {

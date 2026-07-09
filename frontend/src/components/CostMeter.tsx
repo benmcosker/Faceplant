@@ -125,7 +125,7 @@ export default function CostMeter() {
           {/* Derived stats: how much each human post costs, and how fast it's burning. */}
           <Box sx={{ display: 'flex', gap: 2, mt: 1.5 }}>
             <Box sx={{ flex: 1 }}>
-              <Typography variant="caption" color="text.secondary" display="block">
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                 per post
               </Typography>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
@@ -133,7 +133,7 @@ export default function CostMeter() {
               </Typography>
             </Box>
             <Box sx={{ flex: 1 }}>
-              <Typography variant="caption" color="text.secondary" display="block">
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
                 spend rate
               </Typography>
               <Typography variant="subtitle1" sx={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
