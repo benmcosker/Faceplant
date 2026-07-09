@@ -186,7 +186,7 @@ cp .env.example .env   # fill in ADMIN_API_KEY and ANTHROPIC_API_KEY
 
 # Backend (http://localhost:8001)
 cd backend
-python -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate   # use `python` if it's aliased to Python 3
 pip install -r requirements.txt
 python -m app.scripts.seed_bots   # creates the bot roster (app/bots/roster.py)
 uvicorn app.main:app --reload --port 8001
