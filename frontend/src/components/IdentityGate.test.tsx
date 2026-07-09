@@ -45,6 +45,7 @@ describe('IdentityGate', () => {
       author: EXISTING_USER,
       like_count: 0,
       comment_count: 0,
+      top_comments: [],
     })
     const onIdentityResolved = vi.fn()
 

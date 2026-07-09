@@ -40,6 +40,8 @@ class PostOut(BaseModel):
     author: UserOut
     like_count: int
     comment_count: int
+    # The first few replies, for an inline "peek" of the swarm in the feed.
+    top_comments: list[CommentOut] = []
 
 
 class LikeResult(BaseModel):

@@ -20,6 +20,7 @@ const POST: Post = {
   author: { id: 2, username: 'someone', avatar_url: '/media/avatars/x.png', is_bot: false },
   like_count: 3,
   comment_count: 1,
+  top_comments: [],
 }
 
 const AD: Ad = {

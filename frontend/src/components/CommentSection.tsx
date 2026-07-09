@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Avatar, Box, Button, Stack, TextField, Typography } from '@mui/material'
+import { Box, Button, Stack, TextField, Typography } from '@mui/material'
 import { addComment, errorMessage, fetchComments, type Comment } from '../api'
-import { renderBodyWithGifs } from './gifBody'
+import CommentItem from './CommentItem'
 import CommentSkeleton from './CommentSkeleton'
 import ErrorState from './ErrorState'
 import { useToast } from './ToastProvider'
@@ -72,14 +72,7 @@ export default function CommentSection({ postId, username, onCommentAdded }: Pro
       ) : (
         <Stack spacing={1.5} sx={{ mb: 2 }}>
           {comments.map((c) => (
-            <Box key={c.id} sx={{ display: 'flex', gap: 1 }}>
-              <Avatar src={c.author.avatar_url} sx={{ width: 28, height: 28 }} />
-              <Box>
-                <Typography variant="body2" component="div">
-                  <strong>{c.author.username}</strong> {renderBodyWithGifs(c.body)}
-                </Typography>
-              </Box>
-            </Box>
+            <CommentItem key={c.id} comment={c} />
           ))}
           {comments.length === 0 && (
             <Typography variant="body2" color="text.secondary">

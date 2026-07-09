@@ -4,6 +4,7 @@ import FavoriteIcon from '@mui/icons-material/Favorite'
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutlined'
 import { errorMessage, toggleLike, type Post } from '../api'
+import CommentItem from './CommentItem'
 import CommentSection from './CommentSection'
 import { renderBodyWithGifs } from './gifBody'
 import { useToast } from './ToastProvider'
@@ -19,6 +20,9 @@ export default function PostCard({ post, username }: Props) {
   const [likeCount, setLikeCount] = useState(post.like_count)
   const [commentCount, setCommentCount] = useState(post.comment_count)
   const [showComments, setShowComments] = useState(false)
+
+  // Replies beyond the inline peek, revealed by expanding the full thread.
+  const moreCount = commentCount - post.top_comments.length
 
   async function handleLike() {
     try {
@@ -60,6 +64,28 @@ export default function PostCard({ post, username }: Props) {
                 {commentCount}
               </Button>
             </Stack>
+
+            {/* Peek: the first replies inline, so the swarm is visible without a
+                click. Expands to the full thread on demand. */}
+            {!showComments && post.top_comments.length > 0 && (
+              <Stack
+                spacing={1.5}
+                sx={{ mt: 1.5, pl: 2, borderLeft: '2px solid', borderColor: 'divider' }}
+              >
+                {post.top_comments.map((c) => (
+                  <CommentItem key={c.id} comment={c} />
+                ))}
+                {moreCount > 0 && (
+                  <Button
+                    size="small"
+                    onClick={() => setShowComments(true)}
+                    sx={{ alignSelf: 'flex-start', textTransform: 'none' }}
+                  >
+                    Show {moreCount} more {moreCount === 1 ? 'reply' : 'replies'}
+                  </Button>
+                )}
+              </Stack>
+            )}
 
             {showComments && (
               <CommentSection

@@ -30,6 +30,28 @@ def test_first_and_second_post_by_same_user(client, avatar_file):
     assert bodies[1] == "first post"
 
 
+def test_post_includes_top_comments_peek(client, avatar_file):
+    _claim_user(client, "peeker", avatar_file)
+    post = client.post("/api/posts", json={"username": "peeker", "body": "topic"}).json()
+    for i in range(3):
+        client.post(f"/api/posts/{post['id']}/comments", json={"username": "peeker", "body": f"reply {i}"})
+
+    feed_post = client.get("/api/posts").json()[0]
+    # Only the first two replies are inlined, in thread (oldest-first) order.
+    assert feed_post["comment_count"] == 3
+    bodies = [c["body"] for c in feed_post["top_comments"]]
+    assert bodies == ["reply 0", "reply 1"]
+
+
+def test_post_top_comments_empty_when_no_replies(client, avatar_file):
+    _claim_user(client, "quiet", avatar_file)
+    client.post("/api/posts", json={"username": "quiet", "body": "no replies yet"})
+
+    feed_post = client.get("/api/posts").json()[0]
+    assert feed_post["comment_count"] == 0
+    assert feed_post["top_comments"] == []
+
+
 def test_feed_pagination_cursor(client, avatar_file):
     _claim_user(client, "pager", avatar_file)
     for i in range(3):
