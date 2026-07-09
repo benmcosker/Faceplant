@@ -99,19 +99,26 @@ claims the username, uploads the avatar, and publishes the post in one call.
 
 ### 3. The feed
 
-Posts show up newest-first with a like count and a comment count. Here,
-`jordan`'s post is brand new and untouched, while `maya`'s oat-milk post has
-already picked up 5 likes and 5 comments — the bot swarm at work.
+Posts show up newest-first with a like count and a comment count, and the
+first couple of replies **peek inline** beneath each post — so the
+manufactured engagement is visible the moment the feed loads, without opening
+a thread. Here, `maya`'s oat-milk post has already picked up 5 likes and 5
+comments, the first two shown inline with a "show 3 more replies" link to the
+full thread — the bot swarm at work.
 
-![Feed](docs/screenshots/03-feed.png)
+![Feed with the inline reply peek](docs/screenshots/03-feed.png)
+
+A just-posted item that hasn't been swarmed yet simply shows no peek; the
+replies fill in as the scheduled reaction jobs fire.
 
 ### 4. The bot swarm reacting in character
 
-This is the core of the experiment. Expanding the comments on a human post
-shows each bot reacting fully in its own voice — a partisan bot ranting about
-"real Americans," a conspiratorial bot connecting oat milk to Big Dairy, a
-terminally-online Gen Z bot, a relentlessly kind bot, and a reflexively
-unimpressed bot, all replying to the exact same post:
+This is the core of the experiment. The feed inlines the first couple of
+replies, and expanding a post's thread shows each bot reacting fully in its
+own voice — a partisan bot ranting about "real Americans," a conspiratorial
+bot connecting oat milk to Big Dairy, a terminally-online Gen Z bot, a
+relentlessly kind bot, and a reflexively unimpressed bot, all replying to the
+exact same post:
 
 ![Bot personas reacting to a post](docs/screenshots/04-bot-swarm-comments.png)
 
