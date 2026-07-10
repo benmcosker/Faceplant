@@ -17,6 +17,7 @@ const SUMMARY: CostSummary = {
   by_source: {
     bot_reaction: { cost_usd: 0.02, calls: 10 },
     ad_tagline: { cost_usd: 0.0034, calls: 2 },
+    bot_post: { cost_usd: 0.0009, calls: 1 },
   },
   per_human_user: [
     { username: 'maya', cost_usd: 0.0184, calls: 8 },
@@ -31,6 +32,8 @@ const SUMMARY: CostSummary = {
     { source: 'bot_reaction', actor: 'gifgremlin', human_username: 'jordan', cost_usd: 0.0006, created_at: '2026-07-08T00:00:01Z' },
   ],
   spend_per_min: [0, 0, 0.001, 0.003, 0.0007, 0, 0.002, 0, 0, 0.0005, 0, 0, 0.001, 0.004, 0.0021],
+  no_human_cost_usd: 0.0031,
+  no_human_calls: 5,
 }
 
 describe('CostMeter', () => {
@@ -59,6 +62,11 @@ describe('CostMeter', () => {
     expect(screen.getByText('Evergreen Farewell Plans targeted maya')).toBeInTheDocument()
     expect(screen.getByText('gifgremlin reacted to jordan')).toBeInTheDocument()
     expect(screen.getByText('+$0.0007')).toBeInTheDocument()
+
+    // Phase 3: spend that served no human at all ("the void").
+    expect(screen.getByText('Spent on nobody')).toBeInTheDocument()
+    expect(screen.getByText('Bot posts')).toBeInTheDocument()
+    expect(screen.getByText(/\$0\.0031 across 5 calls/)).toBeInTheDocument()
   })
 
   it('renders $0.0000 before any data arrives', () => {

@@ -35,6 +35,7 @@ def get_costs(db: Session = Depends(get_db)):
     output_tokens = 0
     by_source: dict[str, dict] = {}
     per_user: dict[int, dict] = {}
+    nobody = {"cost_usd": 0.0, "calls": 0}
     post_ids: set[int] = set()
     rate_per_min = 0.0
     buckets = [0.0] * SPARKLINE_BUCKETS
@@ -52,6 +53,10 @@ def get_costs(db: Session = Depends(get_db)):
             u = per_user.setdefault(row.human_user_id, {"cost_usd": 0.0, "calls": 0})
             u["cost_usd"] += row.cost_usd
             u["calls"] += 1
+        else:
+            # No human at either end (a bot-authored post) — spend for the void.
+            nobody["cost_usd"] += row.cost_usd
+            nobody["calls"] += 1
 
         if row.post_id is not None:
             post_ids.add(row.post_id)
@@ -69,12 +74,21 @@ def get_costs(db: Session = Depends(get_db)):
     recent_rows = sorted(rows, key=lambda r: (r.created_at or now, r.id), reverse=True)[:RECENT_LIMIT]
     referenced_ids.update(r.human_user_id for r in recent_rows if r.human_user_id is not None)
 
-    usernames: dict[int, str] = {}
+    users_by_id: dict[int, models.User] = {}
     if referenced_ids:
-        usernames = {
-            u.id: u.username
-            for u in db.query(models.User).filter(models.User.id.in_(referenced_ids))
+        users_by_id = {
+            u.id: u for u in db.query(models.User).filter(models.User.id.in_(referenced_ids))
         }
+    usernames = {uid: u.username for uid, u in users_by_id.items()}
+
+    # Spend attributed to a bot (a bot's own post being swarmed) serves no human
+    # either — fold it into "nobody" so the per-human rollup stays humans-only.
+    for uid in list(per_user.keys()):
+        user = users_by_id.get(uid)
+        if user is None or user.is_bot:
+            nobody["cost_usd"] += per_user[uid]["cost_usd"]
+            nobody["calls"] += per_user[uid]["calls"]
+            del per_user[uid]
 
     per_human_user = sorted(
         (
@@ -117,4 +131,6 @@ def get_costs(db: Session = Depends(get_db)):
         rate_per_min_usd=round(rate_per_min, 6),
         recent=recent,
         spend_per_min=[round(b, 6) for b in buckets],
+        no_human_cost_usd=round(nobody["cost_usd"], 6),
+        no_human_calls=nobody["calls"],
     )
