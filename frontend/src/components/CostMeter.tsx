@@ -113,7 +113,7 @@ export default function CostMeter() {
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Box sx={{ p: 2, width: 320 }}>
-          <Typography variant="overline" color="text.secondary">
+          <Typography variant="overline" color="text.secondary" sx={{ display: 'block', lineHeight: 1.4 }}>
             The cost of manufactured engagement
           </Typography>
           <Typography variant="h4" sx={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
