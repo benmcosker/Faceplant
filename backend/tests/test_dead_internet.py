@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from app import models
-from app.bots import reactions
+from app.bots import origination, reactions
 from app.config import settings
 from app.db import SessionLocal
 
@@ -170,3 +170,100 @@ def test_bot_post_triggers_swarm_only_when_loop_on(client, avatar_file, admin_he
         assert all(j.generation == 0 for j in jobs)
     finally:
         db.close()
+
+
+# --- Phase 3: autonomous bot origination + the "nobody" cost bucket ----------
+
+
+def _bot_post_response(text="an unprompted bot thought"):
+    return SimpleNamespace(
+        content=[SimpleNamespace(type="text", text=text)],
+        usage=SimpleNamespace(input_tokens=12, output_tokens=6),
+    )
+
+
+def _bot_posts(db):
+    return (
+        db.query(models.Post)
+        .join(models.User, models.Post.user_id == models.User.id)
+        .filter(models.User.is_bot.is_(True))
+        .all()
+    )
+
+
+def test_bot_origination_creates_post_and_swarm_when_enabled(client, avatar_file, admin_headers, monkeypatch):
+    monkeypatch.setattr(settings, "bot_origination_enabled", True)
+    for i in range(4):
+        _create_bot(client, admin_headers, f"origbot{i}")
+
+    with patch.object(origination, "_get_client") as mock:
+        mock.return_value.messages.create.return_value = _bot_post_response("beep. thoughts on oat milk.")
+        origination.run_bot_origination()
+
+    db = SessionLocal()
+    try:
+        posts = _bot_posts(db)
+        assert len(posts) == 1
+        assert posts[0].body == "beep. thoughts on oat milk."
+        # The bot's post got swarmed — a thread with no human in it.
+        jobs = db.query(models.BotReactionJob).filter(models.BotReactionJob.post_id == posts[0].id).all()
+        assert len(jobs) > 0
+        # Its spend is recorded as nobody's: source bot_post, no human attribution.
+        rows = db.query(models.TokenUsage).filter(models.TokenUsage.source == "bot_post").all()
+        assert len(rows) == 1 and rows[0].human_user_id is None
+    finally:
+        db.close()
+
+
+def test_bot_origination_is_a_noop_when_disabled(client, avatar_file, admin_headers):
+    _create_bot(client, admin_headers, "quietbot")
+    origination.run_bot_origination()  # flag off by default
+
+    db = SessionLocal()
+    try:
+        assert db.query(models.Post).count() == 0
+    finally:
+        db.close()
+
+
+def test_bot_origination_is_rate_limited(client, avatar_file, admin_headers, monkeypatch):
+    monkeypatch.setattr(settings, "bot_origination_enabled", True)
+    for i in range(4):
+        _create_bot(client, admin_headers, f"ratebot{i}")
+
+    with patch.object(origination, "_get_client") as mock:
+        mock.return_value.messages.create.return_value = _bot_post_response()
+        origination.run_bot_origination()
+        origination.run_bot_origination()  # immediately again — inside the interval
+
+    db = SessionLocal()
+    try:
+        assert len(_bot_posts(db)) == 1  # only one bot post, not two
+    finally:
+        db.close()
+
+
+def test_costs_folds_human_less_spend_into_nobody(client, avatar_file, admin_headers):
+    _claim_user(client, "realhuman", avatar_file)
+    _create_bot(client, admin_headers, "voidbot")
+
+    db = SessionLocal()
+    try:
+        human = db.query(models.User).filter(models.User.username == "realhuman").first()
+        bot = db.query(models.User).filter(models.User.username == "voidbot").first()
+        # served a human
+        db.add(models.TokenUsage(source="bot_reaction", model="claude-haiku-4-5", cost_usd=0.003, human_user_id=human.id))
+        # a bot's own post being swarmed — attributed to a bot, i.e. nobody
+        db.add(models.TokenUsage(source="bot_reaction", model="claude-haiku-4-5", cost_usd=0.002, human_user_id=bot.id))
+        # a bot post — no attribution at all
+        db.add(models.TokenUsage(source="bot_post", model="claude-haiku-4-5", cost_usd=0.001, human_user_id=None))
+        db.commit()
+    finally:
+        db.close()
+
+    body = client.get("/api/costs").json()
+    assert body["no_human_calls"] == 2
+    assert body["no_human_cost_usd"] == 0.003  # 0.002 (bot-attributed) + 0.001 (bot post)
+    # The per-human rollup stays humans-only.
+    assert body["human_user_count"] == 1
+    assert [u["username"] for u in body["per_human_user"]] == ["realhuman"]

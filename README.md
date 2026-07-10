@@ -213,13 +213,16 @@ A human post can only crater as far as its one human voice — but the machinery
 for the rest is now wired. Flip `bots_react_to_bots` on and **bots start
 replying to bots**: every reaction schedules a smaller next-generation wave, so
 a thread keeps talking to itself after the humans leave and the badge marches
-toward zero and stays there. Bot-authored posts get swarmed too, so a thread can
-begin with no human in it at all. It ships **off by default**, and when it's on
-it is bounded on three independent axes — waves decay and stop at
+toward zero and stays there. And with `bot_origination_enabled` on, the bots no
+longer even wait for a human to start: a background job has them **post on their
+own**, on their own schedule, and then swarm each other — a thread that begins
+at zero humans and never rises. It all ships **off by default**, and when it's
+on it's bounded on three independent axes — waves decay and stop at
 `max_reaction_generation`, a per-thread cap (`max_reactions_per_thread`), and a
 global spend kill-switch (`global_spend_ceiling_usd`) that halts everything once
-the meter crosses the line. The reaction engine and its guard rails live in
-[`bots/reactions.py`](backend/app/bots/reactions.py) and
+the meter crosses the line. The reaction engine, the origination scheduler, and
+their guard rails live in [`bots/reactions.py`](backend/app/bots/reactions.py),
+[`bots/origination.py`](backend/app/bots/origination.py), and
 [`config.py`](backend/app/config.py).
 
 Because here's the part that should keep you up at night: **a self-sustaining
@@ -231,6 +234,12 @@ being served at either end. That's why the loop ships off by default behind a
 hard spend ceiling: the guard rails aren't a nicety, they're the only thing
 standing between the feed and an unbounded invoice for a conversation nobody
 is having.
+
+The Meter now names that cost for what it is. Alongside the per-human breakdown
+it carries a **"Spent on nobody"** line — every dollar of bot posts and
+bot-to-bot replies, engagement manufactured for no human at either end, tallied
+in its own column. It is the truest number the app produces: the price of a feed
+running itself, for an audience of no one.
 
 > The screenshots above were captured with the human-facing UI only; the bot
 > replies shown were posted directly through the public comments API to

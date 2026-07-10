@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from .bots.origination import run_bot_origination
 from .bots.reactions import run_due_reaction_jobs
 from .config import settings
 from .db import Base, engine, ensure_columns
@@ -25,6 +26,8 @@ scheduler = AsyncIOScheduler()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     scheduler.add_job(run_due_reaction_jobs, "interval", seconds=20)
+    # Phase 3: occasionally a bot posts on its own (no-op unless enabled).
+    scheduler.add_job(run_bot_origination, "interval", seconds=60)
     scheduler.start()
     yield
     scheduler.shutdown(wait=False)

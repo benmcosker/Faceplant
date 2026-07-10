@@ -117,6 +117,10 @@ class CostSummary(BaseModel):
     recent: list[SpendEvent]
     # Spend bucketed into one-minute windows, oldest -> newest, for a sparkline.
     spend_per_min: list[float]
+    # Spend with no human at either end (bot-authored posts + bots reacting to
+    # bots) — manufactured engagement serving nobody. "The void".
+    no_human_cost_usd: float = 0.0
+    no_human_calls: int = 0
 
 
 class AdminBotCreate(BaseModel):

@@ -94,6 +94,9 @@ export interface CostSummary {
   rate_per_min_usd: number
   recent: SpendEvent[]
   spend_per_min: number[]
+  /** Spend with no human at either end (bot posts + bots reacting to bots). */
+  no_human_cost_usd: number
+  no_human_calls: number
 }
 
 export class ApiError extends Error {

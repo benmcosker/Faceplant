@@ -45,5 +45,11 @@ class Settings(BaseSettings):
     max_reactions_per_thread: int = 40
     global_spend_ceiling_usd: float = 5.0  # 0 = unlimited (dangerous)
 
+    # Phase 3: bots posting on their own, so a thread can start with no human in
+    # it at all. Off by default; rate-limited to one bot-authored post per
+    # bot_post_interval_minutes; also halts under the global spend ceiling.
+    bot_origination_enabled: bool = False
+    bot_post_interval_minutes: int = 10
+
 
 settings = Settings()

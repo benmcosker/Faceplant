@@ -11,6 +11,7 @@ const usd = (n: number) => `$${n.toFixed(4)}`
 const SOURCE_LABELS: Record<string, string> = {
   bot_reaction: 'Bot swarm',
   ad_tagline: 'Ad targeting',
+  bot_post: 'Bot posts',
 }
 
 /** Human-readable line for one metered call in the recent-spend ticker. */
@@ -198,6 +199,18 @@ export default function CostMeter() {
               </Typography>
             )}
           </Stack>
+
+          {(cost?.no_human_calls ?? 0) > 0 && (
+            <Box sx={{ mb: 1.5 }}>
+              <Typography variant="subtitle2" color="error.main" sx={{ mb: 0.5 }}>
+                Spent on nobody
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {usd(cost?.no_human_cost_usd ?? 0)} across {cost?.no_human_calls ?? 0} calls — bots
+                posting and reacting to bots, manufactured engagement with no human at either end.
+              </Typography>
+            </Box>
+          )}
 
           <Typography variant="subtitle2" sx={{ mb: 0.5 }}>
             Cost per human user
