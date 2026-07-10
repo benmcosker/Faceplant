@@ -8,3 +8,6 @@ __pycache__/
 
 # Backend runtime uploads (generated avatars, etc.)
 /backend/uploads/
+
+# Claude Code dev map — kept on the code/claude-dev_map branch, ignored elsewhere
+/CLAUDE.md
