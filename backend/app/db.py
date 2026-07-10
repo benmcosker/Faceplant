@@ -21,6 +21,8 @@ class Base(DeclarativeBase):
 _ADDED_COLUMNS: list[tuple[str, str, str]] = [
     # (table, column, column_type) — the emotion-targeting mood profile.
     ("users", "mood", "VARCHAR"),
+    # Which reaction wave a job belongs to, for the bot-to-bot "dead internet" loop.
+    ("bot_reaction_jobs", "generation", "INTEGER"),
 ]
 
 

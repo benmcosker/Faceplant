@@ -34,5 +34,16 @@ class Settings(BaseSettings):
     long_wave_size_min: int = 3
     long_wave_size_max: int = 5
 
+    # "Dead internet": bots reacting to other bots' activity, so threads sustain
+    # themselves with no humans. OFF by default — this is real, unbounded-by-
+    # default Anthropic spend with no human in the loop. When enabled, the guard
+    # rails below keep it from spiraling: waves decay by generation, stop at
+    # max_reaction_generation, cap per thread, and halt entirely once cumulative
+    # metered spend crosses global_spend_ceiling_usd. Inert while the flag is off.
+    bots_react_to_bots: bool = False
+    max_reaction_generation: int = 3
+    max_reactions_per_thread: int = 40
+    global_spend_ceiling_usd: float = 5.0  # 0 = unlimited (dangerous)
+
 
 settings = Settings()

@@ -33,6 +33,17 @@ class CommentOut(BaseModel):
     author: UserOut
 
 
+class ThreadStats(BaseModel):
+    """How human a thread is, measured by message (post + comments). Powers the
+    live "% human" counter — the "dead internet" gut-punch."""
+
+    # human_messages / total_messages, 0.0–1.0. 1.0 = all human, 0.0 = no humans.
+    human_share: float
+    human_messages: int
+    bot_messages: int
+    total_messages: int
+
+
 class PostOut(BaseModel):
     id: int
     body: str
@@ -42,6 +53,11 @@ class PostOut(BaseModel):
     comment_count: int
     # The first few replies, for an inline "peek" of the swarm in the feed.
     top_comments: list[CommentOut] = []
+    # How human this thread is, by message count — the "% human" counter.
+    human_share: float = 1.0
+    human_messages: int = 1
+    bot_messages: int = 0
+    total_messages: int = 1
 
 
 class LikeResult(BaseModel):

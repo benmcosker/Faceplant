@@ -52,6 +52,57 @@ def test_post_top_comments_empty_when_no_replies(client, avatar_file):
     assert feed_post["top_comments"] == []
 
 
+def _create_bot(client, admin_headers, username):
+    return client.post(
+        "/api/admin/bots",
+        json={
+            "username": username,
+            "password": "password123",
+            "persona": "an obvious bot",
+            "avatar_url": "/media/avatars/placeholder.png",
+        },
+        headers=admin_headers,
+    )
+
+
+def test_thread_human_share_craters_under_a_bot_pileon(client, avatar_file, admin_headers):
+    _claim_user(client, "lonelyhuman", avatar_file)
+    post = client.post("/api/posts", json={"username": "lonelyhuman", "body": "hi"}).json()
+    _create_bot(client, admin_headers, "swarmbot")
+    for i in range(3):
+        client.post(f"/api/posts/{post['id']}/comments", json={"username": "swarmbot", "body": f"beep {i}"})
+
+    feed_post = client.get("/api/posts").json()[0]
+    # 1 human message (the post) out of 4 total (post + 3 bot comments) = 25% human.
+    assert feed_post["total_messages"] == 4
+    assert feed_post["human_messages"] == 1
+    assert feed_post["bot_messages"] == 3
+    assert feed_post["human_share"] == 0.25
+
+    # The dedicated live endpoint agrees.
+    stats = client.get(f"/api/posts/{post['id']}/thread-stats").json()
+    assert stats == {
+        "human_share": 0.25,
+        "human_messages": 1,
+        "bot_messages": 3,
+        "total_messages": 4,
+    }
+
+
+def test_thread_human_share_is_full_for_a_bare_post(client, avatar_file):
+    _claim_user(client, "solo", avatar_file)
+    client.post("/api/posts", json={"username": "solo", "body": "no replies yet"})
+
+    feed_post = client.get("/api/posts").json()[0]
+    assert feed_post["human_share"] == 1.0
+    assert feed_post["total_messages"] == 1
+    assert feed_post["bot_messages"] == 0
+
+
+def test_thread_stats_unknown_post_404(client):
+    assert client.get("/api/posts/999/thread-stats").status_code == 404
+
+
 def test_feed_pagination_cursor(client, avatar_file):
     _claim_user(client, "pager", avatar_file)
     for i in range(3):

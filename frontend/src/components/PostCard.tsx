@@ -1,13 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Avatar, Box, Button, Card, CardContent, Stack, Typography } from '@mui/material'
 import FavoriteIcon from '@mui/icons-material/Favorite'
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutlined'
-import { errorMessage, toggleLike, type Post } from '../api'
+import { errorMessage, fetchThreadStats, toggleLike, type Post } from '../api'
 import CommentItem from './CommentItem'
 import CommentSection from './CommentSection'
+import ThreadHumanity from './ThreadHumanity'
 import { renderBodyWithGifs } from './gifBody'
 import { useToast } from './ToastProvider'
+
+const STATS_POLL_MS = 4000
 
 interface Props {
   post: Post
@@ -20,9 +23,32 @@ export default function PostCard({ post, username }: Props) {
   const [likeCount, setLikeCount] = useState(post.like_count)
   const [commentCount, setCommentCount] = useState(post.comment_count)
   const [showComments, setShowComments] = useState(false)
+  const [stats, setStats] = useState({
+    share: post.human_share,
+    human: post.human_messages,
+    total: post.total_messages,
+  })
 
   // Replies beyond the inline peek, revealed by expanding the full thread.
   const moreCount = commentCount - post.top_comments.length
+
+  // While the thread is open, poll the "% human" so it visibly craters as the
+  // swarm keeps replying — the dead-internet gut-punch, live.
+  useEffect(() => {
+    if (!showComments) return
+    let cancelled = false
+    const tick = () =>
+      fetchThreadStats(post.id).then((s) => {
+        if (!cancelled && s)
+          setStats({ share: s.human_share, human: s.human_messages, total: s.total_messages })
+      })
+    tick()
+    const id = setInterval(tick, STATS_POLL_MS)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
+  }, [showComments, post.id])
 
   async function handleLike() {
     try {
@@ -48,7 +74,7 @@ export default function PostCard({ post, username }: Props) {
               {renderBodyWithGifs(post.body)}
             </Typography>
 
-            <Stack direction="row" spacing={1} sx={{ mt: 1.5 }}>
+            <Stack direction="row" spacing={1} sx={{ mt: 1.5, alignItems: 'center' }}>
               <Button
                 size="small"
                 startIcon={liked ? <FavoriteIcon color="secondary" /> : <FavoriteBorderIcon />}
@@ -63,6 +89,8 @@ export default function PostCard({ post, username }: Props) {
               >
                 {commentCount}
               </Button>
+              <Box sx={{ flexGrow: 1 }} />
+              <ThreadHumanity share={stats.share} human={stats.human} total={stats.total} />
             </Stack>
 
             {/* Peek: the first replies inline, so the swarm is visible without a

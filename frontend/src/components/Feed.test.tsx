@@ -21,6 +21,10 @@ const POST: Post = {
   like_count: 3,
   comment_count: 1,
   top_comments: [],
+  human_share: 0.5,
+  human_messages: 1,
+  bot_messages: 1,
+  total_messages: 2,
 }
 
 const AD: Ad = {

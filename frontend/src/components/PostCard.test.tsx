@@ -7,9 +7,14 @@ import type { Comment, Post } from '../api'
 
 vi.mock('../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api')>()
-  return { ...actual, fetchComments: vi.fn(() => Promise.resolve([])), toggleLike: vi.fn() }
+  return {
+    ...actual,
+    fetchComments: vi.fn(() => Promise.resolve([])),
+    fetchThreadStats: vi.fn(() => Promise.resolve(null)),
+    toggleLike: vi.fn(),
+  }
 })
-import { fetchComments } from '../api'
+import { fetchComments, fetchThreadStats } from '../api'
 
 const bot = (username: string): Comment['author'] => ({
   id: 99,
@@ -34,6 +39,10 @@ function makePost(overrides: Partial<Post>): Post {
     like_count: 5,
     comment_count: 0,
     top_comments: [],
+    human_share: 1,
+    human_messages: 1,
+    bot_messages: 0,
+    total_messages: 1,
     ...overrides,
   }
 }
@@ -92,5 +101,42 @@ describe('PostCard reply peek', () => {
 
     expect(screen.getByText('onlyreply')).toBeInTheDocument()
     expect(screen.queryByText(/Show .* repl/)).not.toBeInTheDocument()
+  })
+})
+
+describe('PostCard % human counter', () => {
+  it('shows the % human from the post', () => {
+    renderCard(makePost({ human_share: 0.2, human_messages: 1, bot_messages: 4, total_messages: 5 }))
+    expect(screen.getByText('20% human')).toBeInTheDocument()
+  })
+
+  it('shows "dead internet" when no humans remain', () => {
+    renderCard(makePost({ human_share: 0, human_messages: 0, bot_messages: 6, total_messages: 6 }))
+    expect(screen.getByText('dead internet')).toBeInTheDocument()
+  })
+
+  it('polls thread-stats and drops the % as the swarm piles on', async () => {
+    vi.mocked(fetchThreadStats).mockResolvedValue({
+      human_share: 0.1,
+      human_messages: 1,
+      bot_messages: 9,
+      total_messages: 10,
+    })
+    renderCard(
+      makePost({
+        comment_count: 3,
+        top_comments: [reply(1, 'wakeupsheeple', 'x')],
+        human_share: 0.4,
+        human_messages: 1,
+        bot_messages: 2,
+        total_messages: 3,
+      }),
+    )
+
+    expect(screen.getByText('40% human')).toBeInTheDocument()
+    // Opening the thread starts the poll, which reports a fresher, lower share.
+    await userEvent.click(screen.getByRole('button', { name: 'Show 2 more replies' }))
+    expect(await screen.findByText('10% human')).toBeInTheDocument()
+    expect(fetchThreadStats).toHaveBeenCalledWith(1)
   })
 })
