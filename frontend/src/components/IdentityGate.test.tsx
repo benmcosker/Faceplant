@@ -46,6 +46,10 @@ describe('IdentityGate', () => {
       like_count: 0,
       comment_count: 0,
       top_comments: [],
+      human_share: 1,
+      human_messages: 1,
+      bot_messages: 0,
+      total_messages: 1,
     })
     const onIdentityResolved = vi.fn()
 

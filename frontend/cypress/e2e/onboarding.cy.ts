@@ -16,6 +16,10 @@ function stubCreatePost(author: typeof maya) {
       like_count: 0,
       comment_count: 0,
       top_comments: [],
+      human_share: 1,
+      human_messages: 1,
+      bot_messages: 0,
+      total_messages: 1,
     },
   }).as('createPost')
   // The feed the app loads immediately after identity resolves.

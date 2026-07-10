@@ -77,6 +77,10 @@ class BotReactionJob(Base):
     scheduled_for: Mapped[datetime] = mapped_column(DateTime, index=True)
     status: Mapped[str] = mapped_column(String, default="pending", index=True)
     executed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Which reaction "wave" this job belongs to: 0 = reacting to a human (or
+    # seed) post; higher values are bots reacting to bot activity. Bounded by
+    # settings.max_reaction_generation once the bot-to-bot loop is enabled.
+    generation: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 

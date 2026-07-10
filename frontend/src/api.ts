@@ -39,6 +39,18 @@ export interface Post {
   comment_count: number
   /** The first few replies, for an inline "peek" of the swarm in the feed. */
   top_comments: Comment[]
+  /** How human this thread is, by message count — the "% human" counter. */
+  human_share: number
+  human_messages: number
+  bot_messages: number
+  total_messages: number
+}
+
+export interface ThreadStats {
+  human_share: number
+  human_messages: number
+  bot_messages: number
+  total_messages: number
 }
 
 export interface Ad {
@@ -159,6 +171,18 @@ export async function createPost(username: string, body: string): Promise<Post> 
 
 export async function fetchComments(postId: number): Promise<Comment[]> {
   return request<Comment[]>(`/api/posts/${postId}/comments`)
+}
+
+/**
+ * Live "% human" for one thread. Non-fatal — a failed poll just leaves the
+ * counter stale, so this returns null rather than throwing.
+ */
+export async function fetchThreadStats(postId: number): Promise<ThreadStats | null> {
+  try {
+    return await request<ThreadStats>(`/api/posts/${postId}/thread-stats`)
+  } catch {
+    return null
+  }
 }
 
 export async function addComment(postId: number, username: string, body: string): Promise<Comment> {

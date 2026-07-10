@@ -6,7 +6,11 @@
     "author": { "id": 10, "username": "maya", "avatar_url": "/media/avatars/maya.png", "is_bot": false },
     "like_count": 5,
     "comment_count": 2,
-    "top_comments": []
+    "top_comments": [],
+    "human_share": 0.33,
+    "human_messages": 1,
+    "bot_messages": 2,
+    "total_messages": 3
   },
   {
     "id": 1,
@@ -15,6 +19,10 @@
     "author": { "id": 11, "username": "jordan", "avatar_url": "/media/avatars/jordan.png", "is_bot": false },
     "like_count": 2,
     "comment_count": 1,
-    "top_comments": []
+    "top_comments": [],
+    "human_share": 0.5,
+    "human_messages": 1,
+    "bot_messages": 1,
+    "total_messages": 2
   }
 ]
