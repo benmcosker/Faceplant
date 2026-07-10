@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from .. import models
 from ..ads.targeting import classify_mood
 from ..bots.reactions import enqueue_reactions_for_post
+from ..config import settings
 from ..db import get_db
 from ..schemas import CommentOut, PostCreate, PostOut, ThreadStats
 
@@ -125,7 +126,10 @@ def create_post(payload: PostCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(post)
 
-    if not author.is_bot:
+    # Human posts always get swarmed. Bot-authored posts do too, but only once
+    # the "dead internet" loop is switched on — so a thread can start with no
+    # human in it at all.
+    if not author.is_bot or settings.bots_react_to_bots:
         enqueue_reactions_for_post(db, post)
 
     return _to_post_out(db, post)

@@ -5,6 +5,7 @@ import re
 from datetime import datetime, timedelta
 
 from anthropic import Anthropic
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .. import giphy, models, usage
@@ -67,6 +68,93 @@ def enqueue_reactions_for_post(db: Session, post: models.Post) -> None:
             models.BotReactionJob(post_id=post.id, bot_user_id=bot.id, scheduled_for=now + offset)
         )
     db.commit()
+
+
+# --- "Dead internet": bots reacting to bots ---------------------------------
+#
+# All of the following is a no-op unless settings.bots_react_to_bots is on. It's
+# what lets a thread keep growing after the humans leave — and every reaction is
+# a real, metered Claude call, so it is bounded on three independent axes:
+# generation depth, a per-thread cap, and a global spend ceiling kill-switch.
+
+
+def _wave_size(generation: int) -> int:
+    """Decaying wave size, so each successive bot-to-bot generation is smaller
+    than the last and the thread tapers instead of exploding."""
+    return max(1, settings.short_wave_size_min - generation)
+
+
+def _thread_reaction_count(db: Session, post_id: int) -> int:
+    """How many bot reactions have been scheduled for a thread (the per-thread cap)."""
+    return (
+        db.query(func.count(models.BotReactionJob.id))
+        .filter(models.BotReactionJob.post_id == post_id)
+        .scalar()
+    ) or 0
+
+
+def _reactions_paused(db: Session) -> bool:
+    """Global kill-switch: halt all bot reactions once cumulative metered spend
+    crosses the ceiling. The last line of defense against an unbounded bill for a
+    conversation nobody is having."""
+    ceiling = settings.global_spend_ceiling_usd
+    if ceiling <= 0:
+        return False
+    total = db.query(func.coalesce(func.sum(models.TokenUsage.cost_usd), 0.0)).scalar() or 0.0
+    return total >= ceiling
+
+
+def _uncommented_bots(db: Session, post_id: int) -> list[models.User]:
+    """Bots that haven't already replied to this thread — keeps successive waves
+    varied and naturally bounds growth as the pool of fresh voices runs dry."""
+    commented_ids = {
+        row[0]
+        for row in db.query(models.Comment.user_id).filter(models.Comment.post_id == post_id).all()
+    }
+    bots = db.query(models.User).filter(models.User.is_bot.is_(True)).all()
+    return [b for b in bots if b.id not in commented_ids]
+
+
+def _maybe_spawn_next_generation(db: Session, post: models.Post, current_generation: int) -> None:
+    """After a bot reaction, schedule a smaller next-generation wave so bots reply
+    to bots and the thread sustains itself. Bounded by max_reaction_generation, the
+    per-thread cap, and the spend ceiling. Enqueued once per generation per post."""
+    if not settings.bots_react_to_bots:
+        return
+    next_gen = current_generation + 1
+    if next_gen > settings.max_reaction_generation:
+        return
+    if _thread_reaction_count(db, post.id) >= settings.max_reactions_per_thread:
+        return
+    if _reactions_paused(db):
+        return
+    # Only the first job of a generation seeds the next wave — otherwise every
+    # reaction in a wave would pile on its own wave and growth would explode.
+    already = (
+        db.query(models.BotReactionJob.id)
+        .filter(
+            models.BotReactionJob.post_id == post.id,
+            models.BotReactionJob.generation == next_gen,
+        )
+        .first()
+    )
+    if already:
+        return
+    candidates = _uncommented_bots(db, post.id)
+    if not candidates:
+        return
+    size = min(_wave_size(next_gen), len(candidates))
+    now = datetime.utcnow()
+    for bot in random.sample(candidates, size):
+        offset = timedelta(minutes=random.uniform(0, settings.short_reaction_window_minutes))
+        db.add(
+            models.BotReactionJob(
+                post_id=post.id,
+                bot_user_id=bot.id,
+                scheduled_for=now + offset,
+                generation=next_gen,
+            )
+        )
 
 
 def _build_system_prompt(bot: models.User) -> str:
@@ -203,6 +291,13 @@ def run_due_reaction_jobs() -> None:
                 job.executed_at = datetime.utcnow()
                 db.commit()
                 continue
+            # Global spend kill-switch: once the meter crosses the ceiling, stop
+            # spending — skip the job instead of making another Claude call.
+            if _reactions_paused(db):
+                job.status = "skipped"
+                job.executed_at = datetime.utcnow()
+                db.commit()
+                continue
             try:
                 thread_comments = _get_recent_comments(db, post.id)
                 text, response = _generate_reaction_text(bot, post, thread_comments)
@@ -228,6 +323,9 @@ def run_due_reaction_jobs() -> None:
                 if already_liked is None:
                     db.add(models.Like(post_id=post.id, user_id=bot.id))
                 job.status = "done"
+                # Bots reacting to bots: schedule a smaller next-generation wave,
+                # so the thread keeps talking to itself after the humans leave.
+                _maybe_spawn_next_generation(db, post, job.generation)
             except Exception:
                 logger.exception("bot reaction job %s failed", job.id)
                 job.status = "failed"

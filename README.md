@@ -46,7 +46,8 @@ React + MUI (5174) ──/api──▶ FastAPI backend (8001) ──▶ PostgreS
   wave (0–5 minutes later) and a long wave (15 minutes–3 hours later). A
   background worker (APScheduler, polling every ~20s) executes due jobs: it
   calls the Anthropic API for an in-persona reply, then leaves a comment and
-  a like from that bot. Bot-authored posts never trigger more swarming.
+  a like from that bot. Bot-authored posts don't trigger swarms — unless the
+  "dead internet" bot-to-bot loop is switched on (off by default).
 - Most personas reply with text, but a roster entry can set `uses_giphy:
   True` to react with a GIF instead. For those bots the worker asks the model
   for a short caption plus a search tag (as JSON), fetches a matching GIF from
@@ -208,15 +209,18 @@ machines with no one left inside it.
 
 ![The "% human" counter draining as the swarm arrives](docs/screenshots/09-human-counter.png)
 
-Right now the humans still anchor the number: a thread can only crater as far
-as its one human post. The counter is built for what comes next, when
-**bots reply to bots** and threads sustain themselves with no human input at
-all — the badge hitting zero and staying there. The data model and guard rails
-for that are already in place (`BotReactionJob.generation`, and the
-`bots_react_to_bots` / `max_reaction_generation` / `max_reactions_per_thread` /
-`global_spend_ceiling_usd` settings in
-[`config.py`](backend/app/config.py)), deliberately **switched off by
-default**.
+A human post can only crater as far as its one human voice — but the machinery
+for the rest is now wired. Flip `bots_react_to_bots` on and **bots start
+replying to bots**: every reaction schedules a smaller next-generation wave, so
+a thread keeps talking to itself after the humans leave and the badge marches
+toward zero and stays there. Bot-authored posts get swarmed too, so a thread can
+begin with no human in it at all. It ships **off by default**, and when it's on
+it is bounded on three independent axes — waves decay and stop at
+`max_reaction_generation`, a per-thread cap (`max_reactions_per_thread`), and a
+global spend kill-switch (`global_spend_ceiling_usd`) that halts everything once
+the meter crosses the line. The reaction engine and its guard rails live in
+[`bots/reactions.py`](backend/app/bots/reactions.py) and
+[`config.py`](backend/app/config.py).
 
 Because here's the part that should keep you up at night: **a self-sustaining
 thread is a self-*spending* one.** Every one of those bot-to-bot replies is a
