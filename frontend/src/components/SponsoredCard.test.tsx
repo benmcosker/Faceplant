@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import SponsoredCard from './SponsoredCard'
-import { ToastProvider } from './ToastProvider'
 import type { Ad } from '../api'
 
 const AD: Ad = {
@@ -11,6 +9,7 @@ const AD: Ad = {
   body: 'An AI friend who’s always online and, by design, can never leave you.',
   cta: 'Meet PocketPal',
   mood: 'lonely',
+  url: 'https://en.wikipedia.org/wiki/Chatbot',
 }
 
 describe('SponsoredCard', () => {
@@ -20,17 +19,20 @@ describe('SponsoredCard', () => {
     expect(screen.getByText(/sponsored · targeted to your mood: lonely/i)).toBeInTheDocument()
     expect(screen.getByText('PocketPal AI')).toBeInTheDocument()
     expect(screen.getByText('Nobody replying? PocketPal always will.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Meet PocketPal' })).toBeInTheDocument()
   })
 
-  it('the CTA breaks the fourth wall via a toast', async () => {
-    render(
-      <ToastProvider>
-        <SponsoredCard ad={AD} />
-      </ToastProvider>,
-    )
+  it('links the CTA out with safe rel attributes', () => {
+    render(<SponsoredCard ad={AD} />)
 
-    await userEvent.click(screen.getByRole('button', { name: 'Meet PocketPal' }))
-    expect(await screen.findByText("This ad isn't real. The targeting is.")).toBeInTheDocument()
+    const cta = screen.getByRole('link', { name: 'Meet PocketPal' })
+    expect(cta).toHaveAttribute('href', 'https://en.wikipedia.org/wiki/Chatbot')
+    expect(cta).toHaveAttribute('target', '_blank')
+    expect(cta).toHaveAttribute('rel', 'sponsored nofollow noopener noreferrer')
+  })
+
+  it('disclaims the placement so a real brand is not implicated', () => {
+    render(<SponsoredCard ad={AD} />)
+
+    expect(screen.getByText(/didn't target you, Faceplant did/i)).toBeInTheDocument()
   })
 })

@@ -177,6 +177,14 @@ to your mood: X" banner, and — with an Anthropic key — the tagline reference
 what you actually wrote. The classifier, ad inventory, and targeting live in
 [`backend/app/ads/`](backend/app/ads/).
 
+Each card's CTA links out (`rel="sponsored nofollow noopener"`) to the real
+product category — a `url` per ad in the inventory, shipped with neutral
+placeholders to swap for real brand/affiliate links. Deliberately, the
+surveillance stays the *platform's*: the card carries a disclaimer — *"Not a
+paid placement — [advertiser] didn't target you, Faceplant did"* — so a real
+brand is never made to look like it bought grief-targeting. The satire is the
+mood-reading; the advertiser is just what got matched to it.
+
 ![Emotion-targeted sponsored post](docs/screenshots/07-sponsored-ad.png)
 
 ### 8. "The Meter": the live cost of manufactured engagement

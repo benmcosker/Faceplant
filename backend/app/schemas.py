@@ -72,6 +72,9 @@ class AdOut(BaseModel):
     cta: str
     # The mood the viewer was profiled into — shown on the card's targeting banner.
     mood: str
+    # Where the CTA links out (a real brand / affiliate URL). Opened with
+    # rel="sponsored nofollow noopener".
+    url: str
 
 
 class SourceCost(BaseModel):

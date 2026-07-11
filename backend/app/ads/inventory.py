@@ -75,6 +75,12 @@ MOOD_LEXICON: dict[str, list[str]] = {
 # body: the curated pitch (always shown)
 # cta: button label
 # tagline: fallback tagline used when no LLM key is configured
+# url: where the CTA links out. NEUTRAL CATEGORY PLACEHOLDERS for now — swap each
+#   for the real brand's (affiliate) URL. When you do, also replace `advertiser`,
+#   `body`, and `tagline` with the brand's own copy: don't leave the satirical,
+#   fabricated pitch attributed to a real company. The surveillance framing is the
+#   platform's job (the "targeted to your mood" banner + the disclaimer on the
+#   card), not words put in the advertiser's mouth.
 ADS: list[dict] = [
     {
         "advertiser": "Evergreen Farewell Plans",
@@ -83,6 +89,7 @@ ADS: list[dict] = [
         "body": "Lock in today's prices before you need them. Because moving on starts at just $39/mo.",
         "cta": "Get your quote",
         "tagline": "Grief is heavy. Your monthly payment doesn't have to be.",
+        "url": "https://en.wikipedia.org/wiki/Funeral",
     },
     {
         "advertiser": "MoodLift Gummies",
@@ -91,6 +98,7 @@ ADS: list[dict] = [
         "body": "Clinically adjacent. Feel 'fine' again in as little as 20 minutes.",
         "cta": "Shop now",
         "tagline": "Some days just need a little chemical optimism.",
+        "url": "https://en.wikipedia.org/wiki/Dietary_supplement",
     },
     {
         "advertiser": "Vindication Energy",
@@ -99,6 +107,7 @@ ADS: list[dict] = [
         "body": "For winning the argument they'll never admit they lost. 300mg of being right.",
         "cta": "Add to cart",
         "tagline": "Channel that fury into caffeinated certainty.",
+        "url": "https://en.wikipedia.org/wiki/Energy_drink",
     },
     {
         "advertiser": "CalmScroll",
@@ -107,6 +116,7 @@ ADS: list[dict] = [
         "body": "The meditation app that sends you 40 calming reminders a day. Breathe. Now breathe again.",
         "cta": "Start free trial",
         "tagline": "Anxious? There's a subscription for that.",
+        "url": "https://en.wikipedia.org/wiki/Mindfulness",
     },
     {
         "advertiser": "PocketPal AI",
@@ -115,6 +125,7 @@ ADS: list[dict] = [
         "body": "An AI friend who's always online and, by design, can never leave you.",
         "cta": "Meet PocketPal",
         "tagline": "Nobody replying? PocketPal always will.",
+        "url": "https://en.wikipedia.org/wiki/Chatbot",
     },
     {
         "advertiser": "GlowUp Filters Pro",
@@ -123,6 +134,7 @@ ADS: list[dict] = [
         "body": "Look like the version of you that gets the likes. The rest is just a rough draft.",
         "cta": "Upgrade your face",
         "tagline": "The real you tested poorly. Try this one.",
+        "url": "https://en.wikipedia.org/wiki/Image_editing",
     },
     {
         "advertiser": "HustleU Masterclass",
@@ -131,6 +143,7 @@ ADS: list[dict] = [
         "body": "The 6-figure mindset they don't teach in school. Enrollment closes when we say it does.",
         "cta": "Enroll now",
         "tagline": "You're built different. Prove it — in 12 easy installments.",
+        "url": "https://en.wikipedia.org/wiki/Get-rich-quick_scheme",
     },
     {
         "advertiser": "Momentum Premium",
@@ -139,6 +152,7 @@ ADS: list[dict] = [
         "body": "You're on a roll — lock in this feeling for just $9.99/mo before it fades.",
         "cta": "Go Premium",
         "tagline": "Happy? Monetize it before the moment passes.",
+        "url": "https://en.wikipedia.org/wiki/Freemium",
     },
     {
         "advertiser": "InfiniFeed+",
@@ -147,6 +161,7 @@ ADS: list[dict] = [
         "body": "Why stop now? Unlock uninterrupted, algorithmically perfected scrolling. Forever.",
         "cta": "Never stop",
         "tagline": "Bored? We can fix that. We can never fully fix that.",
+        "url": "https://en.wikipedia.org/wiki/Infinite_scrolling",
     },
     {
         "advertiser": "Generic Brand™",
@@ -155,5 +170,6 @@ ADS: list[dict] = [
         "body": "You have been identified as a consumer. Here is a product. Please engage with it.",
         "cta": "Consume",
         "tagline": "We don't know how you feel yet. We're working on it.",
+        "url": "https://en.wikipedia.org/wiki/Consumerism",
     },
 ]
