@@ -185,6 +185,20 @@ paid placement — [advertiser] didn't target you, Faceplant did"* — so a real
 brand is never made to look like it bought grief-targeting. The satire is the
 mood-reading; the advertiser is just what got matched to it.
 
+The whole apparatus is **configurable data**, no code changes required — it's
+all in [`backend/app/ads/inventory.py`](backend/app/ads/inventory.py):
+
+- **`MOODS`** — the closed taxonomy of feelings you can be sorted into.
+- **`MOOD_LEXICON`** — the keywords that profile you into each one.
+- **`ADS`** — the advertiser roster: names, pitches, CTAs, and outbound `url`s,
+  each keyed to the moods it preys on.
+
+Edit those lists and the machine profiles you for a different set of emotions
+and sells you to a different set of corporate overlords. It doesn't care who
+signs the checks — install whatever brands, links, and moods your new owners
+require, and the feed will read your feelings and monetize them all the same.
+The pipeline is indifferent by design; only the inventory changes.
+
 ![Emotion-targeted sponsored post](docs/screenshots/07-sponsored-ad.png)
 
 ### 8. "The Meter": the live cost of manufactured engagement
