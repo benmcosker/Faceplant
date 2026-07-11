@@ -60,6 +60,8 @@ export interface Ad {
   cta: string
   /** The mood the platform profiled the viewer into, shown on the targeting banner. */
   mood: string
+  /** Where the CTA links out (a real brand / affiliate URL). */
+  url: string
 }
 
 export interface SourceCost {

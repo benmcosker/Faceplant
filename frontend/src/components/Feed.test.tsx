@@ -33,6 +33,7 @@ const AD: Ad = {
   body: 'Lock in today’s prices before you need them.',
   cta: 'Get your quote',
   mood: 'sad',
+  url: 'https://en.wikipedia.org/wiki/Funeral',
 }
 
 describe('Feed', () => {

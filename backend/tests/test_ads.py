@@ -38,6 +38,11 @@ def test_every_mood_has_inventory():
         assert mood in covered, f"no ad targets mood {mood!r}"
 
 
+def test_every_ad_has_an_outbound_url():
+    for ad in ADS:
+        assert ad.get("url", "").startswith("http"), f"{ad['advertiser']!r} is missing a url"
+
+
 def test_select_ad_matches_mood():
     ad = targeting.select_ad("angry")
     assert "angry" in ad["moods"]
@@ -72,6 +77,7 @@ def test_posting_profiles_the_users_mood(client, avatar_file, monkeypatch):
     assert ad["mood"] == "sad"
     assert ad["advertiser"] != "Generic Brand™"
     assert ad["tagline"] and ad["cta"] and ad["body"]
+    assert ad["url"].startswith("http")
 
 
 def test_unprofiled_user_gets_the_neutral_ad(client, avatar_file, monkeypatch):

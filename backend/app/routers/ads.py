@@ -48,4 +48,5 @@ def get_sponsored(username: str = Query(...), db: Session = Depends(get_db)):
         body=ad["body"],
         cta=ad["cta"],
         mood=mood,
+        url=ad["url"],
     )

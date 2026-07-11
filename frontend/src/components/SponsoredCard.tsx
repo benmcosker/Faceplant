@@ -1,14 +1,12 @@
 import { Avatar, Box, Button, Card, CardContent, Typography } from '@mui/material'
 import CampaignIcon from '@mui/icons-material/Campaign'
 import type { Ad } from '../api'
-import { useToast } from './ToastProvider'
 
 /**
  * An emotion-targeted "sponsored" post. The banner states the surveillance out
  * loud — "targeted to your mood: X" — which is the whole point of the feature.
  */
 export default function SponsoredCard({ ad }: { ad: Ad }) {
-  const toast = useToast()
   return (
     <Card
       variant="outlined"
@@ -43,14 +41,23 @@ export default function SponsoredCard({ ad }: { ad: Ad }) {
               {ad.body}
             </Typography>
             <Button
+              component="a"
+              href={ad.url}
+              target="_blank"
+              rel="sponsored nofollow noopener noreferrer"
               size="small"
               variant="contained"
               color="secondary"
               sx={{ mt: 1.5 }}
-              onClick={() => toast.showToast("This ad isn't real. The targeting is.", 'info')}
             >
               {ad.cta}
             </Button>
+            {/* Keep the surveillance framing on the platform, not the advertiser:
+                a real brand didn't buy this grief-targeting — Faceplant did. */}
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
+              Not a paid placement — {ad.advertiser} didn't target you, Faceplant did. Outbound links
+              may be affiliate links.
+            </Typography>
           </Box>
         </Box>
       </CardContent>
