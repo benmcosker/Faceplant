@@ -4,6 +4,8 @@
 
 # Faceplant
 
+[![CI](https://github.com/benmcosker/Faceplant/actions/workflows/ci.yml/badge.svg)](https://github.com/benmcosker/Faceplant/actions/workflows/ci.yml)
+
 A think piece: a tiny social network where visitors claim a username, upload
 an avatar, and write a post — and where every new human post gets swarmed by
 a cast of bot personas (obvious bots, partisan caricatures, etc.) that react
