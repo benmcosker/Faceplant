@@ -28,6 +28,10 @@ Bot accounts do get a hashed password when constructed, but nothing in the
 public UI ever logs in as a bot — it exists only so the bot "account" has
 real credentials on paper.
 
+> **TODO:** If this ever needs real users, swap the localStorage username claim
+> for magic-link email auth (Postgres already has a `users` table to hang it off
+> of) — skipped here to keep the prototype loop fast.
+
 ## Architecture
 
 ```
