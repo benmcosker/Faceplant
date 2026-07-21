@@ -10,10 +10,6 @@ from app.config import settings
 from app.db import SessionLocal
 
 
-def _claim_user(client, username, avatar_file):
-    return client.post("/api/users", data={"username": username}, files={"avatar": avatar_file}).json()
-
-
 def _create_bot(client, admin_headers, username):
     return client.post(
         "/api/admin/bots",
@@ -74,8 +70,8 @@ def test_costs_endpoint_empty(client):
     assert body["spend_per_min"] == [0.0] * 15
 
 
-def test_costs_endpoint_aggregates_and_attributes(client, avatar_file):
-    human = _claim_user(client, "spender", avatar_file)
+def test_costs_endpoint_aggregates_and_attributes(client, login):
+    human = login("spender@example.com", "spender")
     db = SessionLocal()
     try:
         # Two bot reactions + one ad tagline, all triggered by one human.
@@ -104,8 +100,8 @@ def test_costs_endpoint_aggregates_and_attributes(client, avatar_file):
     assert body["cost_per_human_user_avg"] == pytest.approx(0.0047)
 
 
-def test_costs_endpoint_storytelling_layer(client, avatar_file):
-    human = _claim_user(client, "storyteller", avatar_file)
+def test_costs_endpoint_storytelling_layer(client, login):
+    human = login("storyteller@example.com", "storyteller")
     now = datetime.utcnow()
     db = SessionLocal()
     try:
@@ -149,10 +145,10 @@ def test_costs_endpoint_storytelling_layer(client, avatar_file):
     assert sum(spark) == pytest.approx(0.0067)
 
 
-def test_bot_reaction_records_metered_cost(client, avatar_file, admin_headers):
+def test_bot_reaction_records_metered_cost(client, login, admin_headers):
     _create_bot(client, admin_headers, "meterbot")
-    human = _claim_user(client, "postauthor", avatar_file)
-    post = client.post("/api/posts", json={"username": "postauthor", "body": "meter this"}).json()
+    human = login("postauthor@example.com", "postauthor")
+    post = client.post("/api/posts", json={"body": "meter this"}).json()
 
     db = SessionLocal()
     try:
@@ -188,10 +184,10 @@ def test_bot_reaction_records_metered_cost(client, avatar_file, admin_headers):
     assert human["id"]  # sanity
 
 
-def test_ad_tagline_records_metered_cost(client, avatar_file, monkeypatch):
+def test_ad_tagline_records_metered_cost(client, login, monkeypatch):
     monkeypatch.setattr(settings, "anthropic_api_key", "test-key")
-    _claim_user(client, "adviewer", avatar_file)
-    client.post("/api/posts", json={"username": "adviewer", "body": "I am so furious and fed up"})
+    login("adviewer@example.com", "adviewer")
+    client.post("/api/posts", json={"body": "I am so furious and fed up"})
 
     from app.ads import targeting
 
@@ -201,7 +197,7 @@ def test_ad_tagline_records_metered_cost(client, avatar_file, monkeypatch):
     )
     with patch.object(targeting, "_get_client") as mock_client:
         mock_client.return_value.messages.create.return_value = fake
-        client.get("/api/sponsored", params={"username": "adviewer"})
+        client.get("/api/sponsored")
 
     body = client.get("/api/costs").json()
     assert body["by_source"]["ad_tagline"]["calls"] == 1

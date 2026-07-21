@@ -8,12 +8,8 @@ from app.ads.inventory import ADS, MOODS
 from app.config import settings
 
 
-def _claim_user(client, username, avatar_file):
-    return client.post("/api/users", data={"username": username}, files={"avatar": avatar_file}).json()
-
-
-def _post(client, username, body):
-    return client.post("/api/posts", json={"username": username, "body": body}).json()
+def _post(client, body):
+    return client.post("/api/posts", json={"body": body}).json()
 
 
 @pytest.mark.parametrize(
@@ -64,13 +60,13 @@ def test_build_tagline_uses_llm_when_key_present(monkeypatch):
     assert tagline == "We saw you say goodbye today."
 
 
-def test_posting_profiles_the_users_mood(client, avatar_file, monkeypatch):
+def test_posting_profiles_the_users_mood(client, login, monkeypatch):
     # No key: the sponsored endpoint uses the curated tagline (deterministic).
     monkeypatch.setattr(settings, "anthropic_api_key", "")
-    _claim_user(client, "griever", avatar_file)
-    _post(client, "griever", "I miss her so much, my heart is broken")
+    login("griever@example.com", "griever")
+    _post(client, "I miss her so much, my heart is broken")
 
-    res = client.get("/api/sponsored", params={"username": "griever"})
+    res = client.get("/api/sponsored")
     assert res.status_code == 200
     ad = res.json()
     # Targeted at the profiled mood, not generic.
@@ -80,32 +76,32 @@ def test_posting_profiles_the_users_mood(client, avatar_file, monkeypatch):
     assert ad["url"].startswith("http")
 
 
-def test_unprofiled_user_gets_the_neutral_ad(client, avatar_file, monkeypatch):
+def test_unprofiled_user_gets_the_neutral_ad(client, login, monkeypatch):
     monkeypatch.setattr(settings, "anthropic_api_key", "")
-    # Claim a user but never post -> no mood profiled yet.
-    _claim_user(client, "blankslate", avatar_file)
+    # Sign up but never post -> no mood profiled yet.
+    login("blankslate@example.com", "blankslate")
 
-    res = client.get("/api/sponsored", params={"username": "blankslate"})
+    res = client.get("/api/sponsored")
     assert res.status_code == 200
     ad = res.json()
     assert ad["mood"] == "neutral"
     assert ad["advertiser"] == "Generic Brand™"
 
 
-def test_sponsored_unknown_user_404(client):
-    res = client.get("/api/sponsored", params={"username": "ghost"})
-    assert res.status_code == 404
+def test_sponsored_without_session_401(client):
+    res = client.get("/api/sponsored")
+    assert res.status_code == 401
 
 
-def test_sponsored_tagline_personalized_with_key(client, avatar_file, monkeypatch):
+def test_sponsored_tagline_personalized_with_key(client, login, monkeypatch):
     monkeypatch.setattr(settings, "anthropic_api_key", "test-key")
-    _claim_user(client, "angryuser", avatar_file)
-    _post(client, "angryuser", "I am so furious, this is infuriating and unfair")
+    login("angryuser@example.com", "angryuser")
+    _post(client, "I am so furious, this is infuriating and unfair")
 
     fake = SimpleNamespace(content=[SimpleNamespace(type="text", text="Still fuming? Caffeinate the rage.")])
     with patch.object(targeting, "_get_client") as mock_client:
         mock_client.return_value.messages.create.return_value = fake
-        res = client.get("/api/sponsored", params={"username": "angryuser"})
+        res = client.get("/api/sponsored")
 
     ad = res.json()
     assert ad["mood"] == "angry"

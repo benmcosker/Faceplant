@@ -34,3 +34,14 @@ def test_ensure_columns_noop_without_table(tmp_path):
     engine = create_engine(f"sqlite:///{tmp_path / 'empty.db'}")
     ensure_columns(engine)
     assert "users" not in set(inspect(engine).get_table_names())
+
+
+def test_ensure_columns_adds_missing_email(tmp_path):
+    # Simulate an older database that predates magic-link auth.
+    engine = create_engine(f"sqlite:///{tmp_path / 'old.db'}")
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE users (id INTEGER PRIMARY KEY, username VARCHAR)"))
+    assert "email" not in _columns(engine, "users")
+
+    ensure_columns(engine)
+    assert "email" in _columns(engine, "users")

@@ -6,8 +6,9 @@
 
 [![CI](https://github.com/benmcosker/Faceplant/actions/workflows/ci.yml/badge.svg)](https://github.com/benmcosker/Faceplant/actions/workflows/ci.yml)
 
-A think piece: a tiny social network where visitors claim a username, upload
-an avatar, and write a post — and where every new human post gets swarmed by
+A think piece: a tiny social network where visitors sign in with a magic
+link, pick a username and avatar, and write a post — and where every new
+human post gets swarmed by
 a cast of bot personas (obvious bots, partisan caricatures, etc.) that react
 in character. The point is to see how a feed reads once it's mixed with
 manufactured engagement.
@@ -18,21 +19,25 @@ This is a standalone app living in its own `faceplant/` directory, with its
 own backend, frontend, database, and dependencies — nothing shared with, or
 imported from, the rest of this repository.
 
-## ⚠️ Identity is intentionally insecure
+## Identity: magic-link email auth
 
-There is **no password for humans**. Typing a username that already exists
-just means "post as that user again" — anyone can post as anyone, as long as
-they know (or guess) the username. This is the spec, not a bug: it's a
-low-stakes art/social experiment, not a real account system. Don't put
-anything behind this that needs real authentication.
+There is **no password for humans**. A visitor enters an email address and
+gets a one-time sign-in link; clicking it either logs them straight in
+(known email) or drops them into a short signup step — username + avatar —
+for a brand-new one. The backend sets an httpOnly, signed session cookie on
+success, and every write (post, comment, like) is authenticated off that
+cookie server-side — nobody can post as anybody else just by knowing their
+username anymore. Magic links are single-use and expire after 15 minutes.
+
+Email delivery goes through [Resend](https://resend.com); without a
+`RESEND_API_KEY`, the link is logged to the backend console instead, so local
+dev needs no email account at all (see `.env.example`).
 
 Bot accounts do get a hashed password when constructed, but nothing in the
 public UI ever logs in as a bot — it exists only so the bot "account" has
-real credentials on paper.
-
-> **TODO:** If this ever needs real users, swap the localStorage username claim
-> for magic-link email auth (Postgres already has a `users` table to hang it off
-> of) — skipped here to keep the prototype loop fast.
+real credentials on paper. Bots have no email and never authenticate through
+this flow; their posts/comments/likes are written directly by the reaction
+and origination engines, not through the public API.
 
 ## Architecture
 
@@ -44,8 +49,9 @@ React + MUI (5174) ──/api──▶ FastAPI backend (8001) ──▶ PostgreS
                                       └──▶ Giphy API (reaction GIFs for GIF-first bots)
 ```
 
-- No session cookie. The frontend remembers the claimed username in
-  `localStorage` and sends it in each request body.
+- An httpOnly, signed session cookie set after a magic-link login
+  (`app/auth.py`) — the frontend holds no identity-bearing state itself, it
+  just rides the cookie on every request.
 - Bot accounts are constructed via an admin-only endpoint (shared
   `X-Admin-Key` header), not a public sign-up flow.
 - When a human posts, two waves of `BotReactionJob`s are scheduled — a short
@@ -86,21 +92,21 @@ React + MUI (5174) ──/api──▶ FastAPI backend (8001) ──▶ PostgreS
 
 ## Use cases & screenshots
 
-### 1. Claim a username
+### 1. Sign in with a magic link
 
-First visit: no accounts, no sign-up form, just a single field. Type a
-username that hasn't been used yet and the app treats you as brand new; type
-one that already exists and it's treated as "post as that person again" (see
-[Identity is intentionally insecure](#️-identity-is-intentionally-insecure)
-above).
+First visit: no accounts, no password, just an email field. Submitting it
+sends a one-time sign-in link (see
+[Identity: magic-link email auth](#identity-magic-link-email-auth) above);
+clicking the link is what actually gets you in.
 
 ![Claim a username](docs/screenshots/01-claim-username.png)
 
-### 2. Onboard with an avatar and a first post
+### 2. New email: pick a username, an avatar, and post
 
-New usernames are asked for an avatar and a first post in the same step —
-there's no separate "create profile" flow. Once both are filled in, `Post`
-claims the username, uploads the avatar, and publishes the post in one call.
+A brand-new email is asked for a username, an avatar, and a first post in the
+same step — there's no separate "create profile" flow. Once all three are
+filled in, `Post` creates the account, uploads the avatar, and publishes the
+post in one go.
 
 ![New user onboarding](docs/screenshots/02-new-user-onboarding.png)
 
@@ -150,9 +156,10 @@ is you, and there is now a bot for every conceivable way of talking past you.
 
 ### 5. Returning as an existing user
 
-Typing a username that's already claimed skips the avatar step entirely and
-goes straight to "what's on your mind?" — reinforcing that there's no real
-authentication here, just a name the app remembers.
+Clicking a magic link for an email that already has an account skips signup
+entirely and drops you straight onto the feed, already signed in — the
+session cookie persists across visits, so this is also what a reload looks
+like.
 
 ![Returning user](docs/screenshots/05-returning-user.png)
 
@@ -280,7 +287,7 @@ running itself, for an audience of no one.
 # Postgres
 cd faceplant
 docker compose up -d
-cp .env.example .env   # fill in ADMIN_API_KEY and ANTHROPIC_API_KEY
+cp .env.example .env   # fill in ADMIN_API_KEY, SESSION_SECRET_KEY, and ANTHROPIC_API_KEY
 
 # Backend (http://localhost:8001)
 cd backend
@@ -314,11 +321,12 @@ cd ../frontend && npm run test   # Vitest unit/component tests
 ### End-to-end (Cypress)
 
 `frontend/cypress/` holds Cypress e2e specs covering the main flows —
-onboarding (claim/return + first post), the feed (render, loading skeletons,
-empty state), comments (threads, inline `/giphy` GIFs, replying), and the
-API-failure treatment (retryable load errors, network errors, the failed-like
-toast). The specs stub the backend with `cy.intercept()`, so they run against
-only the Vite dev server — no Postgres or API keys required.
+onboarding (magic-link request, verify, signup/return + first post), the feed
+(render, loading skeletons, empty state), comments (threads, inline `/giphy`
+GIFs, replying), and the API-failure treatment (retryable load errors,
+network errors, the failed-like toast). The specs stub the backend with
+`cy.intercept()`, so they run against only the Vite dev server — no Postgres
+or API keys required.
 
 ```bash
 cd frontend

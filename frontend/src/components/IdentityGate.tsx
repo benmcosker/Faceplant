@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Alert,
   Avatar,
@@ -9,35 +9,68 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { claimUser, createPost, errorMessage, fetchUser, setIdentity } from '../api'
+import {
+  completeSignup,
+  createPost,
+  errorMessage,
+  requestMagicLink,
+  verifyMagicLink,
+  type User,
+} from '../api'
 
 interface Props {
-  onIdentityResolved: (username: string) => void
+  onIdentityResolved: (user: User) => void
 }
 
-type Step = 'username' | 'new' | 'returning'
+type Step = 'email' | 'sent' | 'signup' | 'verifying'
 
 /**
- * Onboarding flow: claim/look up a username, then post (avatar required
- * only for a brand-new username — a duplicate username just means "post as
- * that user again").
+ * Onboarding flow: request a magic-link email, then (after the link is
+ * clicked and lands back here with ?token=) either sign straight in
+ * (returning email) or finish signup with a username + avatar + first post
+ * (new email).
  */
 export default function IdentityGate({ onIdentityResolved }: Props) {
-  const [step, setStep] = useState<Step>('username')
+  const [step, setStep] = useState<Step>('email')
+  const [email, setEmail] = useState('')
+  const [pendingToken, setPendingToken] = useState<string | null>(null)
   const [username, setUsername] = useState('')
   const [avatar, setAvatar] = useState<File | null>(null)
   const [body, setBody] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function handleUsernameSubmit(e: React.FormEvent) {
+  // A magic-link click lands back on `/` with ?token=... — no client-side
+  // router needed for one query param.
+  useEffect(() => {
+    const token = new URLSearchParams(window.location.search).get('token')
+    if (!token) return
+    window.history.replaceState({}, '', window.location.pathname)
+    setStep('verifying')
+    verifyMagicLink(token)
+      .then((result) => {
+        if (result.status === 'logged_in') {
+          onIdentityResolved(result.user)
+        } else {
+          setPendingToken(token)
+          setEmail(result.email)
+          setStep('signup')
+        }
+      })
+      .catch((err) => {
+        setError(errorMessage(err))
+        setStep('email')
+      })
+  }, [onIdentityResolved])
+
+  async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!username.trim()) return
+    if (!email.trim()) return
     setLoading(true)
     setError(null)
     try {
-      const existing = await fetchUser(username.trim())
-      setStep(existing ? 'returning' : 'new')
+      await requestMagicLink(email.trim())
+      setStep('sent')
     } catch (err) {
       setError(errorMessage(err))
     } finally {
@@ -45,22 +78,18 @@ export default function IdentityGate({ onIdentityResolved }: Props) {
     }
   }
 
-  async function handlePostSubmit(e: React.FormEvent) {
+  async function handleSignupSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!body.trim()) return
-    if (step === 'new' && !avatar) {
-      setError('An avatar is required for a new username.')
+    if (!username.trim() || !avatar || !body.trim() || !pendingToken) {
+      if (!avatar) setError('An avatar is required.')
       return
     }
     setLoading(true)
     setError(null)
     try {
-      if (step === 'new') {
-        await claimUser(username.trim(), avatar ?? undefined)
-      }
-      await createPost(username.trim(), body.trim())
-      setIdentity(username.trim().toLowerCase())
-      onIdentityResolved(username.trim().toLowerCase())
+      const user = await completeSignup(pendingToken, username.trim(), avatar)
+      await createPost(body.trim())
+      onIdentityResolved(user)
     } catch (err) {
       setError(errorMessage(err))
     } finally {
@@ -75,8 +104,7 @@ export default function IdentityGate({ onIdentityResolved }: Props) {
           faceplant
         </Typography>
         <Typography color="text.secondary" sx={{ mb: 3 }}>
-          A think piece. Claim a username — typing one that already exists just posts as that
-          person again.
+          A think piece. Sign in with your email — we'll send you a link, no password needed.
         </Typography>
 
         {error && (
@@ -85,26 +113,46 @@ export default function IdentityGate({ onIdentityResolved }: Props) {
           </Alert>
         )}
 
-        {step === 'username' && (
-          <Box component="form" onSubmit={handleUsernameSubmit} sx={{ display: 'flex', gap: 1 }}>
+        {step === 'verifying' && <Typography>Checking your link…</Typography>}
+
+        {step === 'email' && (
+          <Box component="form" onSubmit={handleEmailSubmit} sx={{ display: 'flex', gap: 1 }}>
             <TextField
               fullWidth
+              type="email"
+              label="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoFocus
+            />
+            <Button type="submit" variant="contained" disabled={loading}>
+              Send link
+            </Button>
+          </Box>
+        )}
+
+        {step === 'sent' && (
+          <Box>
+            <Typography sx={{ mb: 2 }}>
+              Check <strong>{email}</strong> for a sign-in link.
+            </Typography>
+            <Button size="small" onClick={() => setStep('email')}>
+              Use a different email
+            </Button>
+          </Box>
+        )}
+
+        {step === 'signup' && (
+          <Box component="form" onSubmit={handleSignupSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <Typography>
+              <strong>{email}</strong> checks out. Pick a username, an avatar, and write your first post.
+            </Typography>
+            <TextField
               label="Username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoFocus
             />
-            <Button type="submit" variant="contained" disabled={loading}>
-              Continue
-            </Button>
-          </Box>
-        )}
-
-        {step === 'new' && (
-          <Box component="form" onSubmit={handlePostSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Typography>
-              <strong>{username}</strong> is new. Pick an avatar and write your first post.
-            </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Avatar src={avatar ? URL.createObjectURL(avatar) : undefined} sx={{ width: 56, height: 56 }} />
               <Button component="label" variant="outlined">
@@ -123,26 +171,6 @@ export default function IdentityGate({ onIdentityResolved }: Props) {
               onChange={(e) => setBody(e.target.value)}
               multiline
               minRows={3}
-              autoFocus
-            />
-            <Button type="submit" variant="contained" disabled={loading}>
-              Post
-            </Button>
-          </Box>
-        )}
-
-        {step === 'returning' && (
-          <Box component="form" onSubmit={handlePostSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Typography>
-              Welcome back, <strong>{username}</strong>. What's on your mind?
-            </Typography>
-            <TextField
-              label="What's on your mind?"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              multiline
-              minRows={3}
-              autoFocus
             />
             <Button type="submit" variant="contained" disabled={loading}>
               Post

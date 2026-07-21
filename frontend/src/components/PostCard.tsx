@@ -14,10 +14,9 @@ const STATS_POLL_MS = 4000
 
 interface Props {
   post: Post
-  username: string
 }
 
-export default function PostCard({ post, username }: Props) {
+export default function PostCard({ post }: Props) {
   const toast = useToast()
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(post.like_count)
@@ -52,7 +51,7 @@ export default function PostCard({ post, username }: Props) {
 
   async function handleLike() {
     try {
-      const result = await toggleLike(post.id, username)
+      const result = await toggleLike(post.id)
       setLiked(result.liked)
       setLikeCount(result.count)
     } catch (err) {
@@ -118,7 +117,6 @@ export default function PostCard({ post, username }: Props) {
             {showComments && (
               <CommentSection
                 postId={post.id}
-                username={username}
                 onCommentAdded={() => setCommentCount((c) => c + 1)}
               />
             )}

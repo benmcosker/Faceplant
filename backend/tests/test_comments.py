@@ -5,14 +5,6 @@ from app import giphy
 from app.config import settings
 
 
-def _claim_user(client, username, avatar_file):
-    return client.post("/api/users", data={"username": username}, files={"avatar": avatar_file}).json()
-
-
-def _create_post(client, username, body="hello world"):
-    return client.post("/api/posts", json={"username": username, "body": body}).json()
-
-
 def _giphy_search_response(url):
     """Stand-in for httpx.get()'s return value from Giphy's /search endpoint."""
     return SimpleNamespace(
@@ -21,32 +13,30 @@ def _giphy_search_response(url):
     )
 
 
-def test_comments_on_unknown_post_404(client):
+def test_comments_on_unknown_post_404(client, login):
     response = client.get("/api/posts/999/comments")
     assert response.status_code == 404
 
-    response = client.post("/api/posts/999/comments", json={"username": "x", "body": "y"})
+    login("author@example.com", "author")
+    response = client.post("/api/posts/999/comments", json={"body": "y"})
     assert response.status_code == 404
 
 
-def test_add_comment_unknown_user_404(client, avatar_file):
-    _claim_user(client, "author", avatar_file)
-    post = _create_post(client, "author")
+def test_add_comment_without_session_401(client, login):
+    login("author@example.com", "author")
+    post = client.post("/api/posts", json={"body": "hello world"}).json()
+    client.cookies.clear()
 
-    response = client.post(
-        f"/api/posts/{post['id']}/comments", json={"username": "ghost", "body": "hi"}
-    )
-    assert response.status_code == 404
+    response = client.post(f"/api/posts/{post['id']}/comments", json={"body": "hi"})
+    assert response.status_code == 401
 
 
-def test_add_and_list_comments(client, avatar_file):
-    _claim_user(client, "author", avatar_file)
-    _claim_user(client, "commenter", avatar_file)
-    post = _create_post(client, "author")
+def test_add_and_list_comments(client, login):
+    login("author@example.com", "author")
+    post = client.post("/api/posts", json={"body": "hello world"}).json()
 
-    response = client.post(
-        f"/api/posts/{post['id']}/comments", json={"username": "commenter", "body": "nice post"}
-    )
+    login("commenter@example.com", "commenter")
+    response = client.post(f"/api/posts/{post['id']}/comments", json={"body": "nice post"})
     assert response.status_code == 200
     comment = response.json()
     assert comment["body"] == "nice post"
@@ -60,10 +50,10 @@ def test_add_and_list_comments(client, avatar_file):
     assert feed_post["comment_count"] == 1
 
 
-def test_giphy_command_stores_gif_url(client, avatar_file, monkeypatch):
-    _claim_user(client, "author", avatar_file)
-    _claim_user(client, "gifposter", avatar_file)
-    post = _create_post(client, "author")
+def test_giphy_command_stores_gif_url(client, login, monkeypatch):
+    login("author@example.com", "author")
+    post = client.post("/api/posts", json={"body": "hello world"}).json()
+    login("gifposter@example.com", "gifposter")
 
     monkeypatch.setattr(settings, "giphy_api_key", "test-giphy-key")
     gif_url = "https://media3.giphy.com/media/xyz/giphy.gif"
@@ -71,7 +61,7 @@ def test_giphy_command_stores_gif_url(client, avatar_file, monkeypatch):
     with patch.object(giphy.httpx, "get", return_value=_giphy_search_response(gif_url)) as mock_get:
         response = client.post(
             f"/api/posts/{post['id']}/comments",
-            json={"username": "gifposter", "body": "/giphy this is fine"},
+            json={"body": "/giphy this is fine"},
         )
 
     assert response.status_code == 200
@@ -84,10 +74,10 @@ def test_giphy_command_stores_gif_url(client, avatar_file, monkeypatch):
     assert call.kwargs["params"]["api_key"] == "test-giphy-key"
 
 
-def test_giphy_command_is_case_insensitive(client, avatar_file, monkeypatch):
-    _claim_user(client, "author", avatar_file)
-    _claim_user(client, "gifposter", avatar_file)
-    post = _create_post(client, "author")
+def test_giphy_command_is_case_insensitive(client, login, monkeypatch):
+    login("author@example.com", "author")
+    post = client.post("/api/posts", json={"body": "hello world"}).json()
+    login("gifposter@example.com", "gifposter")
 
     monkeypatch.setattr(settings, "giphy_api_key", "test-giphy-key")
     gif_url = "https://media0.giphy.com/media/abc/giphy.gif"
@@ -95,24 +85,24 @@ def test_giphy_command_is_case_insensitive(client, avatar_file, monkeypatch):
     with patch.object(giphy.httpx, "get", return_value=_giphy_search_response(gif_url)) as mock_get:
         response = client.post(
             f"/api/posts/{post['id']}/comments",
-            json={"username": "gifposter", "body": "/GIPHY   dancing cat  "},
+            json={"body": "/GIPHY   dancing cat  "},
         )
 
     assert response.json()["body"] == gif_url
     assert mock_get.call_args.kwargs["params"]["q"] == "dancing cat"
 
 
-def test_giphy_command_falls_back_to_text_without_key(client, avatar_file, monkeypatch):
-    _claim_user(client, "author", avatar_file)
-    _claim_user(client, "gifposter", avatar_file)
-    post = _create_post(client, "author")
+def test_giphy_command_falls_back_to_text_without_key(client, login, monkeypatch):
+    login("author@example.com", "author")
+    post = client.post("/api/posts", json={"body": "hello world"}).json()
+    login("gifposter@example.com", "gifposter")
 
     monkeypatch.setattr(settings, "giphy_api_key", "")
 
     with patch.object(giphy.httpx, "get") as mock_get:
         response = client.post(
             f"/api/posts/{post['id']}/comments",
-            json={"username": "gifposter", "body": "/giphy nope"},
+            json={"body": "/giphy nope"},
         )
 
     # No key: Giphy is never called and the literal command text is kept.
@@ -120,10 +110,10 @@ def test_giphy_command_falls_back_to_text_without_key(client, avatar_file, monke
     assert response.json()["body"] == "/giphy nope"
 
 
-def test_giphy_command_falls_back_to_text_when_no_results(client, avatar_file, monkeypatch):
-    _claim_user(client, "author", avatar_file)
-    _claim_user(client, "gifposter", avatar_file)
-    post = _create_post(client, "author")
+def test_giphy_command_falls_back_to_text_when_no_results(client, login, monkeypatch):
+    login("author@example.com", "author")
+    post = client.post("/api/posts", json={"body": "hello world"}).json()
+    login("gifposter@example.com", "gifposter")
 
     monkeypatch.setattr(settings, "giphy_api_key", "test-giphy-key")
     empty = SimpleNamespace(raise_for_status=lambda: None, json=lambda: {"data": []})
@@ -131,21 +121,21 @@ def test_giphy_command_falls_back_to_text_when_no_results(client, avatar_file, m
     with patch.object(giphy.httpx, "get", return_value=empty):
         response = client.post(
             f"/api/posts/{post['id']}/comments",
-            json={"username": "gifposter", "body": "/giphy asdfqwerzxcv"},
+            json={"body": "/giphy asdfqwerzxcv"},
         )
 
     assert response.json()["body"] == "/giphy asdfqwerzxcv"
 
 
-def test_plain_comment_never_calls_giphy(client, avatar_file):
-    _claim_user(client, "author", avatar_file)
-    _claim_user(client, "commenter", avatar_file)
-    post = _create_post(client, "author")
+def test_plain_comment_never_calls_giphy(client, login):
+    login("author@example.com", "author")
+    post = client.post("/api/posts", json={"body": "hello world"}).json()
+    login("commenter@example.com", "commenter")
 
     with patch.object(giphy.httpx, "get") as mock_get:
         response = client.post(
             f"/api/posts/{post['id']}/comments",
-            json={"username": "commenter", "body": "just a normal /giphy-less comment"},
+            json={"body": "just a normal /giphy-less comment"},
         )
 
     mock_get.assert_not_called()

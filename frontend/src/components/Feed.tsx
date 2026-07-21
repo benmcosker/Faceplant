@@ -3,15 +3,12 @@ import { Alert, Box, Button, Container, Stack } from '@mui/material'
 import { type Ad, errorMessage, fetchPosts, fetchSponsored, type Post } from '../api'
 import PostCard from './PostCard'
 import PostCardSkeleton from './PostCardSkeleton'
+import PostComposer from './PostComposer'
 import SponsoredCard from './SponsoredCard'
 import ErrorState from './ErrorState'
 import { useToast } from './ToastProvider'
 
-interface Props {
-  username: string
-}
-
-export default function Feed({ username }: Props) {
+export default function Feed() {
   const toast = useToast()
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
@@ -40,13 +37,13 @@ export default function Feed({ username }: Props) {
   // mood. Best-effort — fetchSponsored never throws, just yields null.
   useEffect(() => {
     let cancelled = false
-    fetchSponsored(username).then((a) => {
+    fetchSponsored().then((a) => {
       if (!cancelled) setAd(a)
     })
     return () => {
       cancelled = true
     }
-  }, [username])
+  }, [])
 
   // A failed "load more" is non-blocking — the feed above it is still valid —
   // so it's surfaced as a toast rather than replacing the whole view.
@@ -67,6 +64,7 @@ export default function Feed({ username }: Props) {
 
   return (
     <Container maxWidth="sm" sx={{ py: 4 }}>
+      <PostComposer onPosted={(post) => setPosts((prev) => [post, ...prev])} />
       {error && !loading ? (
         <ErrorState message={error} onRetry={load} title="Couldn't load the feed" />
       ) : (
@@ -84,7 +82,7 @@ export default function Feed({ username }: Props) {
             <Stack>
               {posts.map((post, i) => (
                 <Fragment key={post.id}>
-                  <PostCard post={post} username={username} />
+                  <PostCard post={post} />
                   {/* Slot the targeted ad into the feed after the first post. */}
                   {i === 0 && ad && <SponsoredCard ad={ad} />}
                 </Fragment>

@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from .. import models
 from ..ads.targeting import build_tagline, select_ad
+from ..auth import get_current_user
 from ..db import get_db
 from ..schemas import AdOut
 
@@ -10,18 +11,13 @@ router = APIRouter(prefix="/api", tags=["ads"])
 
 
 @router.get("/sponsored", response_model=AdOut)
-def get_sponsored(username: str = Query(...), db: Session = Depends(get_db)):
+def get_sponsored(db: Session = Depends(get_db), user: models.User = Depends(get_current_user)):
     """The 'sponsored' post targeted at this viewer's profiled mood.
 
     Real platforms always have an ad to show — so does this one. If we haven't
     profiled the user yet (no posts), they get the deliberately hollow neutral
     ad. The tagline is personalized against the user's most recent post.
     """
-    normalized = username.strip().lower()
-    user = db.query(models.User).filter(models.User.username == normalized).first()
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found.")
-
     mood = user.mood or "neutral"
     ad = select_ad(mood)
 

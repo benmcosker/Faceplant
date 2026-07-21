@@ -1,34 +1,28 @@
-def _claim_user(client, username, avatar_file):
-    return client.post("/api/users", data={"username": username}, files={"avatar": avatar_file}).json()
-
-
-def _create_post(client, username, body="hello world"):
-    return client.post("/api/posts", json={"username": username, "body": body}).json()
-
-
-def test_like_unknown_post_404(client):
-    response = client.post("/api/posts/999/like", json={"username": "x"})
+def test_like_unknown_post_404(client, login):
+    login("liker@example.com", "liker")
+    response = client.post("/api/posts/999/like")
     assert response.status_code == 404
 
 
-def test_like_unknown_user_404(client, avatar_file):
-    _claim_user(client, "author", avatar_file)
-    post = _create_post(client, "author")
+def test_like_without_session_401(client, login):
+    login("author@example.com", "author")
+    post = client.post("/api/posts", json={"body": "hello world"}).json()
+    client.cookies.clear()
 
-    response = client.post(f"/api/posts/{post['id']}/like", json={"username": "ghost"})
-    assert response.status_code == 404
+    response = client.post(f"/api/posts/{post['id']}/like")
+    assert response.status_code == 401
 
 
-def test_like_toggle_on_and_off(client, avatar_file):
-    _claim_user(client, "author", avatar_file)
-    _claim_user(client, "liker", avatar_file)
-    post = _create_post(client, "author")
+def test_like_toggle_on_and_off(client, login):
+    login("author@example.com", "author")
+    post = client.post("/api/posts", json={"body": "hello world"}).json()
 
-    liked = client.post(f"/api/posts/{post['id']}/like", json={"username": "liker"})
+    login("liker@example.com", "liker")
+    liked = client.post(f"/api/posts/{post['id']}/like")
     assert liked.status_code == 200
     assert liked.json() == {"liked": True, "count": 1}
 
-    unliked = client.post(f"/api/posts/{post['id']}/like", json={"username": "liker"})
+    unliked = client.post(f"/api/posts/{post['id']}/like")
     assert unliked.status_code == 200
     assert unliked.json() == {"liked": False, "count": 0}
 

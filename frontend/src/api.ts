@@ -1,20 +1,7 @@
-// Typed client for the backend. No session cookie — identity is just a
-// username the visitor types, remembered in localStorage and sent in each
-// request body. The Vite dev proxy forwards /api -> :8001.
-
-const IDENTITY_KEY = 'faceplant:username'
-
-export function getIdentity(): string | null {
-  return localStorage.getItem(IDENTITY_KEY)
-}
-
-export function setIdentity(username: string): void {
-  localStorage.setItem(IDENTITY_KEY, username)
-}
-
-export function clearIdentity(): void {
-  localStorage.removeItem(IDENTITY_KEY)
-}
+// Typed client for the backend. Identity is a magic-link login: the backend
+// sets an httpOnly session cookie, which every request below rides along
+// automatically (`credentials: 'include'`) — nothing identity-bearing is
+// held in JS. The Vite dev proxy forwards /api -> :8001.
 
 export interface User {
   id: number
@@ -122,7 +109,7 @@ export function errorMessage(err: unknown): string {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response
   try {
-    res = await fetch(path, init)
+    res = await fetch(path, { credentials: 'include', ...init })
   } catch {
     throw new ApiError("Can't reach the server.", 0, 'network_error')
   }
@@ -141,22 +128,50 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T
 }
 
-/** Looks up a username. Returns null on 404 (username not yet claimed). */
-export async function fetchUser(username: string): Promise<User | null> {
+/** The signed-in user for the current session cookie, or null if not logged in. */
+export async function fetchMe(): Promise<User | null> {
   try {
-    return await request<User>(`/api/users/${encodeURIComponent(username)}`)
+    return await request<User>('/api/auth/me')
   } catch (err) {
-    if (err instanceof ApiError && err.status === 404) return null
+    if (err instanceof ApiError && err.status === 401) return null
     throw err
   }
 }
 
-/** Claims a new username (avatar required) or fetches an existing one (avatar ignored). */
-export async function claimUser(username: string, avatar?: File): Promise<User> {
+/** Requests a magic-link sign-in email. Always resolves — the backend never
+ * reveals whether the address has an account. */
+export async function requestMagicLink(email: string): Promise<void> {
+  await request<{ ok: boolean }>('/api/auth/request-link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+}
+
+export type VerifyResult = { status: 'logged_in'; user: User } | { status: 'new'; email: string }
+
+/** Redeems a magic-link token. `status: 'new'` means the email checked out
+ * but there's no account yet — collect a username + avatar and call
+ * completeSignup with this same token. */
+export async function verifyMagicLink(token: string): Promise<VerifyResult> {
+  return request<VerifyResult>('/api/auth/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  })
+}
+
+/** Finishes signup for a verified-but-new email: creates the account and signs in. */
+export async function completeSignup(token: string, username: string, avatar: File): Promise<User> {
   const form = new FormData()
+  form.set('token', token)
   form.set('username', username)
-  if (avatar) form.set('avatar', avatar)
-  return request<User>('/api/users', { method: 'POST', body: form })
+  form.set('avatar', avatar)
+  return request<User>('/api/auth/signup', { method: 'POST', body: form })
+}
+
+export async function logout(): Promise<void> {
+  await request<{ ok: boolean }>('/api/auth/logout', { method: 'POST' })
 }
 
 export async function fetchPosts(cursor?: number): Promise<Post[]> {
@@ -166,11 +181,11 @@ export async function fetchPosts(cursor?: number): Promise<Post[]> {
   return request<Post[]>(`/api/posts${query ? `?${query}` : ''}`)
 }
 
-export async function createPost(username: string, body: string): Promise<Post> {
+export async function createPost(body: string): Promise<Post> {
   return request<Post>('/api/posts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, body }),
+    body: JSON.stringify({ body }),
   })
 }
 
@@ -190,11 +205,11 @@ export async function fetchThreadStats(postId: number): Promise<ThreadStats | nu
   }
 }
 
-export async function addComment(postId: number, username: string, body: string): Promise<Comment> {
+export async function addComment(postId: number, body: string): Promise<Comment> {
   return request<Comment>(`/api/posts/${postId}/comments`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, body }),
+    body: JSON.stringify({ body }),
   })
 }
 
@@ -203,9 +218,9 @@ export async function addComment(postId: number, username: string, body: string)
  * failed ad fetch just means no ad card, never a broken feed — so this swallows
  * errors and returns null rather than throwing.
  */
-export async function fetchSponsored(username: string): Promise<Ad | null> {
+export async function fetchSponsored(): Promise<Ad | null> {
   try {
-    const ad = await request<Ad>(`/api/sponsored?username=${encodeURIComponent(username)}`)
+    const ad = await request<Ad>('/api/sponsored')
     return ad && ad.advertiser ? ad : null
   } catch {
     return null
@@ -224,10 +239,6 @@ export async function fetchCosts(): Promise<CostSummary | null> {
   }
 }
 
-export async function toggleLike(postId: number, username: string): Promise<{ liked: boolean; count: number }> {
-  return request<{ liked: boolean; count: number }>(`/api/posts/${postId}/like`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username }),
-  })
+export async function toggleLike(postId: number): Promise<{ liked: boolean; count: number }> {
+  return request<{ liked: boolean; count: number }>(`/api/posts/${postId}/like`, { method: 'POST' })
 }

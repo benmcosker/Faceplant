@@ -12,7 +12,7 @@ from .bots.origination import run_bot_origination
 from .bots.reactions import run_due_reaction_jobs
 from .config import settings
 from .db import Base, engine, ensure_columns
-from .routers import admin_bots, ads, comments, costs, likes, posts, users
+from .routers import admin_bots, ads, auth, comments, costs, likes, posts
 
 Base.metadata.create_all(engine)
 # Self-heal databases created before later columns were added (e.g. users.mood).
@@ -45,7 +45,7 @@ app.add_middleware(
 
 app.mount("/media", StaticFiles(directory=settings.media_root), name="media")
 
-app.include_router(users.router)
+app.include_router(auth.router)
 app.include_router(posts.router)
 app.include_router(comments.router)
 app.include_router(likes.router)

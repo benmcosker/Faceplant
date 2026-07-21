@@ -50,7 +50,7 @@ function makePost(overrides: Partial<Post>): Post {
 function renderCard(post: Post) {
   return render(
     <ToastProvider>
-      <PostCard post={post} username="me" />
+      <PostCard post={post} />
     </ToastProvider>,
   )
 }

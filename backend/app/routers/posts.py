@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 
 from .. import models
 from ..ads.targeting import classify_mood
+from ..auth import get_current_user
 from ..bots.reactions import enqueue_reactions_for_post
-from ..config import settings
 from ..db import get_db
 from ..schemas import CommentOut, PostCreate, PostOut, ThreadStats
 
@@ -109,27 +109,23 @@ def thread_stats(post_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=PostOut)
-def create_post(payload: PostCreate, db: Session = Depends(get_db)):
-    normalized = payload.username.strip().lower()
-    author = db.query(models.User).filter(models.User.username == normalized).first()
-    if author is None:
-        raise HTTPException(status_code=404, detail="User not found.")
-
+def create_post(
+    payload: PostCreate,
+    db: Session = Depends(get_db),
+    author: models.User = Depends(get_current_user),
+):
     post = models.Post(user_id=author.id, body=payload.body)
     db.add(post)
 
-    if not author.is_bot:
-        # The platform profiles the emotional tone of what you just posted and
-        # remembers it, so it can target "sponsored" content at your mood.
-        author.mood = classify_mood(payload.body)
+    # The platform profiles the emotional tone of what you just posted and
+    # remembers it, so it can target "sponsored" content at your mood. Only
+    # humans reach this endpoint (bots have no session to authenticate with;
+    # bot-authored posts are created directly by bots/origination.py, which
+    # does its own swarming).
+    author.mood = classify_mood(payload.body)
 
     db.commit()
     db.refresh(post)
-
-    # Human posts always get swarmed. Bot-authored posts do too, but only once
-    # the "dead internet" loop is switched on — so a thread can start with no
-    # human in it at all.
-    if not author.is_bot or settings.bots_react_to_bots:
-        enqueue_reactions_for_post(db, post)
+    enqueue_reactions_for_post(db, post)
 
     return _to_post_out(db, post)
