@@ -10,10 +10,6 @@ from app.config import settings
 from app.db import SessionLocal
 
 
-def _claim_user(client, username, avatar_file):
-    return client.post("/api/users", data={"username": username}, files={"avatar": avatar_file}).json()
-
-
 def _create_bot(client, admin_headers, username):
     return client.post(
         "/api/admin/bots",
@@ -27,13 +23,13 @@ def _create_bot(client, admin_headers, username):
     ).json()
 
 
-def test_human_post_enqueues_jobs_in_both_windows(client, avatar_file, admin_headers):
+def test_human_post_enqueues_jobs_in_both_windows(client, login, admin_headers):
     bot_usernames = [f"bot{i}" for i in range(10)]
     for name in bot_usernames:
         _create_bot(client, admin_headers, name)
-    _claim_user(client, "human", avatar_file)
+    login("human@example.com", "human")
 
-    post = client.post("/api/posts", json={"username": "human", "body": "hello"}).json()
+    post = client.post("/api/posts", json={"body": "hello"}).json()
 
     db = SessionLocal()
     try:
@@ -59,22 +55,9 @@ def test_human_post_enqueues_jobs_in_both_windows(client, avatar_file, admin_hea
         db.close()
 
 
-def test_bot_post_enqueues_no_jobs(client, avatar_file, admin_headers):
-    _create_bot(client, admin_headers, "soloBot")
-
-    post = client.post("/api/posts", json={"username": "solobot", "body": "I am a bot"}).json()
-
-    db = SessionLocal()
-    try:
-        jobs = db.query(models.BotReactionJob).filter(models.BotReactionJob.post_id == post["id"]).all()
-        assert jobs == []
-    finally:
-        db.close()
-
-
-def test_no_bots_enqueues_nothing(client, avatar_file):
-    _claim_user(client, "lonelyhuman", avatar_file)
-    post = client.post("/api/posts", json={"username": "lonelyhuman", "body": "anyone here?"}).json()
+def test_no_bots_enqueues_nothing(client, login):
+    login("lonelyhuman@example.com", "lonelyhuman")
+    post = client.post("/api/posts", json={"body": "anyone here?"}).json()
 
     db = SessionLocal()
     try:
@@ -84,10 +67,10 @@ def test_no_bots_enqueues_nothing(client, avatar_file):
         db.close()
 
 
-def test_run_due_reaction_jobs_creates_comment_and_like_and_marks_done(client, avatar_file, admin_headers):
+def test_run_due_reaction_jobs_creates_comment_and_like_and_marks_done(client, login, admin_headers):
     _create_bot(client, admin_headers, "reactorbot")
-    _claim_user(client, "human2", avatar_file)
-    post = client.post("/api/posts", json={"username": "human2", "body": "react to this"}).json()
+    login("human2@example.com", "human2")
+    post = client.post("/api/posts", json={"body": "react to this"}).json()
 
     db = SessionLocal()
     try:
@@ -145,15 +128,15 @@ def test_run_due_reaction_jobs_creates_comment_and_like_and_marks_done(client, a
         db.close()
 
 
-def test_run_due_reaction_jobs_includes_thread_context_when_comments_exist(client, avatar_file, admin_headers):
+def test_run_due_reaction_jobs_includes_thread_context_when_comments_exist(client, login, admin_headers):
     _create_bot(client, admin_headers, "threadbot")
-    _claim_user(client, "human4", avatar_file)
-    _claim_user(client, "commenter4", avatar_file)
-    post = client.post("/api/posts", json={"username": "human4", "body": "thread context test"}).json()
+    login("human4@example.com", "human4")
+    post = client.post("/api/posts", json={"body": "thread context test"}).json()
 
+    login("commenter4@example.com", "commenter4")
     client.post(
         f"/api/posts/{post['id']}/comments",
-        json={"username": "commenter4", "body": "first reply in the thread"},
+        json={"body": "first reply in the thread"},
     )
 
     db = SessionLocal()
@@ -223,12 +206,12 @@ def _giphy_response(url):
     )
 
 
-def test_giphy_bot_posts_gif_url_not_prose(client, avatar_file, admin_headers, monkeypatch):
+def test_giphy_bot_posts_gif_url_not_prose(client, login, admin_headers, monkeypatch):
     # gifgremlin is a uses_giphy=True persona in the roster, so reactions.py
     # should branch into the caption + Giphy path for it.
     _create_bot(client, admin_headers, "gifgremlin")
-    _claim_user(client, "gifhuman", avatar_file)
-    post = client.post("/api/posts", json={"username": "gifhuman", "body": "big news today"}).json()
+    login("gifhuman@example.com", "gifhuman")
+    post = client.post("/api/posts", json={"body": "big news today"}).json()
     _make_jobs_due(post["id"], "gifgremlin")
 
     monkeypatch.setattr(settings, "giphy_api_key", "test-giphy-key")
@@ -259,10 +242,10 @@ def test_giphy_bot_posts_gif_url_not_prose(client, avatar_file, admin_headers, m
         assert reactions._parse_caption_and_tag  # sanity: helper is exported
 
 
-def test_giphy_bot_falls_back_to_caption_without_api_key(client, avatar_file, admin_headers, monkeypatch):
+def test_giphy_bot_falls_back_to_caption_without_api_key(client, login, admin_headers, monkeypatch):
     _create_bot(client, admin_headers, "gifgremlin")
-    _claim_user(client, "gifhuman2", avatar_file)
-    post = client.post("/api/posts", json={"username": "gifhuman2", "body": "no key here"}).json()
+    login("gifhuman2@example.com", "gifhuman2")
+    post = client.post("/api/posts", json={"body": "no key here"}).json()
     _make_jobs_due(post["id"], "gifgremlin")
 
     monkeypatch.setattr(settings, "giphy_api_key", "")
@@ -295,10 +278,10 @@ def test_parse_caption_and_tag(raw, expected):
     assert reactions._parse_caption_and_tag(raw) == expected
 
 
-def test_run_due_reaction_jobs_marks_failed_on_error(client, avatar_file, admin_headers):
+def test_run_due_reaction_jobs_marks_failed_on_error(client, login, admin_headers):
     _create_bot(client, admin_headers, "brokenbot")
-    _claim_user(client, "human3", avatar_file)
-    post = client.post("/api/posts", json={"username": "human3", "body": "will fail"}).json()
+    login("human3@example.com", "human3")
+    post = client.post("/api/posts", json={"body": "will fail"}).json()
 
     db = SessionLocal()
     try:

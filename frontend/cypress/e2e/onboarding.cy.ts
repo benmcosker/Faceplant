@@ -1,7 +1,7 @@
 /// <reference types="cypress" />
 
-// The identity gate: claim/look up a username, then post. There is no real
-// auth — a known username just means "post as that person again".
+// The magic-link identity flow: request a link, land back with ?token=, then
+// either sign straight in (returning email) or finish signup (new email).
 
 const maya = { id: 1, username: 'maya', avatar_url: '/media/avatars/maya.png', is_bot: false }
 
@@ -27,38 +27,56 @@ function stubCreatePost(author: typeof maya) {
 }
 
 describe('onboarding', () => {
-  it('sends a returning username straight to posting, then lands on the feed', () => {
-    cy.intercept('GET', '/api/users/*', { statusCode: 200, body: maya }).as('lookup')
-    stubCreatePost(maya)
-
-    cy.visit('/')
-    cy.get('input').type('maya')
-    cy.contains('button', 'Continue').click()
-
-    cy.wait('@lookup')
-    cy.contains('Welcome back')
-    cy.get('textarea').first().type('hello there')
-    cy.contains('button', 'Post').click()
-
-    cy.wait('@createPost')
-    // AppShell only shows "Switch user" once an identity is set — i.e. on the feed.
-    cy.contains('Switch user').should('be.visible')
+  beforeEach(() => {
+    // No session cookie yet — every spec here starts at the email gate.
+    cy.intercept('GET', '/api/auth/me', { statusCode: 401, body: { error: 'Not logged in.' } }).as('me')
   })
 
-  it('claims a brand-new username with an avatar and a first post', () => {
-    cy.intercept('GET', '/api/users/*', { statusCode: 404, body: { error: 'not found' } }).as('lookup')
-    cy.intercept('POST', '/api/users', {
-      statusCode: 200,
-      body: { id: 2, username: 'newbie', avatar_url: '/media/avatars/newbie.png', is_bot: false },
-    }).as('claim')
-    stubCreatePost({ id: 2, username: 'newbie', avatar_url: '/media/avatars/newbie.png', is_bot: false })
+  it('requests a magic link for an email and shows the "check your email" step', () => {
+    cy.intercept('POST', '/api/auth/request-link', { statusCode: 202, body: { ok: true } }).as('requestLink')
 
     cy.visit('/')
-    cy.get('input').type('newbie')
-    cy.contains('button', 'Continue').click()
+    cy.wait('@me')
+    cy.get('input[type="email"]').type('maya@example.com')
+    cy.contains('button', 'Send link').click()
 
-    cy.wait('@lookup')
-    cy.contains('is new')
+    cy.wait('@requestLink')
+    cy.contains('maya@example.com')
+  })
+
+  it('logs a returning email straight in once the link is verified', () => {
+    cy.intercept('POST', '/api/auth/verify', {
+      statusCode: 200,
+      body: { status: 'logged_in', user: maya, email: null },
+    }).as('verify')
+    stubCreatePost(maya)
+
+    cy.visit('/?token=returning-token')
+    cy.wait('@me')
+    cy.wait('@verify')
+    cy.wait('@feed')
+
+    // AppShell only shows "Log out" once an identity is set — i.e. on the feed.
+    cy.contains('Log out').should('be.visible')
+  })
+
+  it('finishes signup with a username, avatar, and first post for a new email', () => {
+    cy.intercept('POST', '/api/auth/verify', {
+      statusCode: 200,
+      body: { status: 'new', user: null, email: 'newbie@example.com' },
+    }).as('verify')
+    cy.intercept('POST', '/api/auth/signup', {
+      statusCode: 200,
+      body: { id: 2, username: 'newbie', avatar_url: '/media/avatars/newbie.png', is_bot: false },
+    }).as('signup')
+    stubCreatePost({ id: 2, username: 'newbie', avatar_url: '/media/avatars/newbie.png', is_bot: false })
+
+    cy.visit('/?token=fresh-token')
+    cy.wait('@me')
+    cy.wait('@verify')
+
+    cy.contains('newbie@example.com')
+    cy.get('input:visible').first().type('newbie')
     cy.get('input[type="file"]').selectFile(
       { contents: Cypress.Buffer.from('not-a-real-png'), fileName: 'avatar.png', mimeType: 'image/png' },
       { force: true },
@@ -66,22 +84,24 @@ describe('onboarding', () => {
     cy.get('textarea').first().type('hello there')
     cy.contains('button', 'Post').click()
 
-    cy.wait('@claim')
+    cy.wait('@signup')
     cy.wait('@createPost')
-    cy.contains('Switch user').should('be.visible')
+    cy.contains('Log out').should('be.visible')
   })
 
-  it('surfaces a lookup failure inline without leaving the gate', () => {
-    cy.intercept('GET', '/api/users/*', { statusCode: 500, body: { error: 'lookup exploded' } }).as('lookup')
+  it('surfaces a verify failure inline and drops back to the email step', () => {
+    cy.intercept('POST', '/api/auth/verify', {
+      statusCode: 400,
+      body: { error: 'This link is invalid or has expired.' },
+    }).as('verify')
 
-    cy.visit('/')
-    cy.get('input').type('maya')
-    cy.contains('button', 'Continue').click()
+    cy.visit('/?token=bad-token')
+    cy.wait('@me')
+    cy.wait('@verify')
 
-    cy.wait('@lookup')
-    cy.contains('lookup exploded')
-    // Still on the gate — the username field is present.
-    cy.contains('button', 'Continue').should('be.visible')
+    cy.contains('This link is invalid or has expired.')
+    // Back on the email step — the email field is present.
+    cy.contains('button', 'Send link').should('be.visible')
   })
 })
 

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from .. import giphy, models
+from ..auth import get_current_user
 from ..db import get_db
 from ..schemas import CommentCreate, CommentOut
 
@@ -60,15 +61,15 @@ def list_comments(post_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{post_id}/comments", response_model=CommentOut)
-def add_comment(post_id: int, payload: CommentCreate, db: Session = Depends(get_db)):
+def add_comment(
+    post_id: int,
+    payload: CommentCreate,
+    db: Session = Depends(get_db),
+    author: models.User = Depends(get_current_user),
+):
     post = db.get(models.Post, post_id)
     if post is None:
         raise HTTPException(status_code=404, detail="Post not found.")
-
-    normalized = payload.username.strip().lower()
-    author = db.query(models.User).filter(models.User.username == normalized).first()
-    if author is None:
-        raise HTTPException(status_code=404, detail="User not found.")
 
     comment = models.Comment(
         post_id=post_id, user_id=author.id, body=_resolve_giphy_command(payload.body)

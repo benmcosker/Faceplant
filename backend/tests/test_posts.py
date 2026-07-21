@@ -1,18 +1,16 @@
-def _claim_user(client, username, avatar_file):
-    response = client.post("/api/users", data={"username": username}, files={"avatar": avatar_file})
-    assert response.status_code == 200
-    return response.json()
+from app import models
+from app.db import SessionLocal
 
 
-def test_create_post_unknown_user_404(client):
-    response = client.post("/api/posts", json={"username": "ghost", "body": "hello"})
-    assert response.status_code == 404
+def test_create_post_requires_login(client):
+    response = client.post("/api/posts", json={"body": "hello"})
+    assert response.status_code == 401
 
 
-def test_first_and_second_post_by_same_user(client, avatar_file):
-    _claim_user(client, "poster", avatar_file)
+def test_first_and_second_post_by_same_user(client, login):
+    login("poster@example.com", "poster")
 
-    first = client.post("/api/posts", json={"username": "poster", "body": "first post"})
+    first = client.post("/api/posts", json={"body": "first post"})
     assert first.status_code == 200
     first_body = first.json()
     assert first_body["body"] == "first post"
@@ -20,7 +18,7 @@ def test_first_and_second_post_by_same_user(client, avatar_file):
     assert first_body["like_count"] == 0
     assert first_body["comment_count"] == 0
 
-    second = client.post("/api/posts", json={"username": "poster", "body": "second post"})
+    second = client.post("/api/posts", json={"body": "second post"})
     assert second.status_code == 200
 
     feed = client.get("/api/posts")
@@ -30,11 +28,11 @@ def test_first_and_second_post_by_same_user(client, avatar_file):
     assert bodies[1] == "first post"
 
 
-def test_post_includes_top_comments_peek(client, avatar_file):
-    _claim_user(client, "peeker", avatar_file)
-    post = client.post("/api/posts", json={"username": "peeker", "body": "topic"}).json()
+def test_post_includes_top_comments_peek(client, login):
+    login("peeker@example.com", "peeker")
+    post = client.post("/api/posts", json={"body": "topic"}).json()
     for i in range(3):
-        client.post(f"/api/posts/{post['id']}/comments", json={"username": "peeker", "body": f"reply {i}"})
+        client.post(f"/api/posts/{post['id']}/comments", json={"body": f"reply {i}"})
 
     feed_post = client.get("/api/posts").json()[0]
     # Only the first two replies are inlined, in thread (oldest-first) order.
@@ -43,9 +41,9 @@ def test_post_includes_top_comments_peek(client, avatar_file):
     assert bodies == ["reply 0", "reply 1"]
 
 
-def test_post_top_comments_empty_when_no_replies(client, avatar_file):
-    _claim_user(client, "quiet", avatar_file)
-    client.post("/api/posts", json={"username": "quiet", "body": "no replies yet"})
+def test_post_top_comments_empty_when_no_replies(client, login):
+    login("quiet@example.com", "quiet")
+    client.post("/api/posts", json={"body": "no replies yet"})
 
     feed_post = client.get("/api/posts").json()[0]
     assert feed_post["comment_count"] == 0
@@ -65,12 +63,19 @@ def _create_bot(client, admin_headers, username):
     )
 
 
-def test_thread_human_share_craters_under_a_bot_pileon(client, avatar_file, admin_headers):
-    _claim_user(client, "lonelyhuman", avatar_file)
-    post = client.post("/api/posts", json={"username": "lonelyhuman", "body": "hi"}).json()
+def test_thread_human_share_craters_under_a_bot_pileon(client, login, admin_headers):
+    login("lonelyhuman@example.com", "lonelyhuman")
+    post = client.post("/api/posts", json={"body": "hi"}).json()
     _create_bot(client, admin_headers, "swarmbot")
-    for i in range(3):
-        client.post(f"/api/posts/{post['id']}/comments", json={"username": "swarmbot", "body": f"beep {i}"})
+
+    db = SessionLocal()
+    try:
+        bot = db.query(models.User).filter(models.User.username == "swarmbot").first()
+        for i in range(3):
+            db.add(models.Comment(post_id=post["id"], user_id=bot.id, body=f"beep {i}"))
+        db.commit()
+    finally:
+        db.close()
 
     feed_post = client.get("/api/posts").json()[0]
     # 1 human message (the post) out of 4 total (post + 3 bot comments) = 25% human.
@@ -89,9 +94,9 @@ def test_thread_human_share_craters_under_a_bot_pileon(client, avatar_file, admi
     }
 
 
-def test_thread_human_share_is_full_for_a_bare_post(client, avatar_file):
-    _claim_user(client, "solo", avatar_file)
-    client.post("/api/posts", json={"username": "solo", "body": "no replies yet"})
+def test_thread_human_share_is_full_for_a_bare_post(client, login):
+    login("solo@example.com", "solo")
+    client.post("/api/posts", json={"body": "no replies yet"})
 
     feed_post = client.get("/api/posts").json()[0]
     assert feed_post["human_share"] == 1.0
@@ -103,10 +108,10 @@ def test_thread_stats_unknown_post_404(client):
     assert client.get("/api/posts/999/thread-stats").status_code == 404
 
 
-def test_feed_pagination_cursor(client, avatar_file):
-    _claim_user(client, "pager", avatar_file)
+def test_feed_pagination_cursor(client, login):
+    login("pager@example.com", "pager")
     for i in range(3):
-        client.post("/api/posts", json={"username": "pager", "body": f"post {i}"})
+        client.post("/api/posts", json={"body": f"post {i}"})
 
     first_page = client.get("/api/posts", params={"limit": 2}).json()
     assert len(first_page) == 2

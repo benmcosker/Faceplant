@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { AppBar, Box, Button, Toolbar, Typography } from '@mui/material'
-import SwitchAccountIcon from '@mui/icons-material/SwitchAccount'
+import LogoutIcon from '@mui/icons-material/Logout'
 import CostMeter from './CostMeter'
 
 interface Props {
@@ -29,8 +29,8 @@ export default function AppShell({ username, onSwitchUser, children }: Props) {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <CostMeter />
               <Typography>{username}</Typography>
-              <Button color="inherit" startIcon={<SwitchAccountIcon />} onClick={onSwitchUser}>
-                Switch user
+              <Button color="inherit" startIcon={<LogoutIcon />} onClick={onSwitchUser}>
+                Log out
               </Button>
             </Box>
           )}

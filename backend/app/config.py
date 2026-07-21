@@ -25,6 +25,20 @@ class Settings(BaseSettings):
     # back to a caption-only reply.
     giphy_api_key: str = ""
 
+    # Signs the session cookie issued after a magic-link login. Required, like
+    # admin_api_key — generate with `python -c "import secrets; print(secrets.token_hex(32))"`.
+    session_secret_key: str
+    session_ttl_days: int = 30
+    # Set True once served over real HTTPS; localhost dev stays False (http://).
+    cookie_secure: bool = False
+
+    magic_link_token_ttl_minutes: int = 15
+    # Sends magic-link emails via Resend (https://resend.com). Optional: without
+    # it, the link is logged to the backend console instead — no email account
+    # needed for local dev.
+    resend_api_key: str = ""
+    email_from: str = "Faceplant <onboarding@resend.dev>"
+
     short_reaction_window_minutes: int = 5
     long_reaction_window_min_minutes: int = 15
     long_reaction_window_max_minutes: int = 180

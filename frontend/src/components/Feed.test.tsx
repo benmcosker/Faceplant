@@ -9,9 +9,10 @@ vi.mock('../api', async (importOriginal) => {
     ...actual,
     fetchPosts: vi.fn(),
     fetchSponsored: vi.fn(() => Promise.resolve(null)),
+    createPost: vi.fn(),
   }
 })
-import { type Ad, ApiError, fetchPosts, fetchSponsored, type Post } from '../api'
+import { type Ad, ApiError, createPost, fetchPosts, fetchSponsored, type Post } from '../api'
 
 const POST: Post = {
   id: 1,
@@ -40,7 +41,7 @@ describe('Feed', () => {
   it('renders posts returned by the API', async () => {
     vi.mocked(fetchPosts).mockResolvedValue([POST])
 
-    render(<Feed username="me" />)
+    render(<Feed />)
 
     expect(await screen.findByText('hello world')).toBeInTheDocument()
     expect(screen.getByText('someone')).toBeInTheDocument()
@@ -50,7 +51,7 @@ describe('Feed', () => {
     vi.mocked(fetchPosts).mockResolvedValue([POST])
     vi.mocked(fetchSponsored).mockResolvedValue(AD)
 
-    render(<Feed username="me" />)
+    render(<Feed />)
 
     expect(await screen.findByText('Evergreen Farewell Plans')).toBeInTheDocument()
     expect(screen.getByText(/targeted to your mood: sad/i)).toBeInTheDocument()
@@ -65,7 +66,7 @@ describe('Feed', () => {
       }),
     )
 
-    render(<Feed username="me" />)
+    render(<Feed />)
 
     // While the request is pending, the loading skeletons are shown.
     expect(screen.getByRole('status', { name: 'Loading posts' })).toBeInTheDocument()
@@ -79,7 +80,7 @@ describe('Feed', () => {
   it('shows an empty-state message when there are no posts', async () => {
     vi.mocked(fetchPosts).mockResolvedValue([])
 
-    render(<Feed username="me" />)
+    render(<Feed />)
 
     expect(await screen.findByText('No posts yet. Be the first.')).toBeInTheDocument()
   })
@@ -87,7 +88,7 @@ describe('Feed', () => {
   it('shows an error message when the feed fails to load', async () => {
     vi.mocked(fetchPosts).mockRejectedValue(new ApiError('nope', 502, 'upstream_error'))
 
-    render(<Feed username="me" />)
+    render(<Feed />)
 
     expect(await screen.findByText('nope')).toBeInTheDocument()
   })
@@ -97,12 +98,27 @@ describe('Feed', () => {
       .mockRejectedValueOnce(new ApiError('nope', 502, 'upstream_error'))
       .mockResolvedValueOnce([POST])
 
-    render(<Feed username="me" />)
+    render(<Feed />)
 
     const retry = await screen.findByRole('button', { name: /try again/i })
     await userEvent.click(retry)
 
     expect(await screen.findByText('hello world')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /try again/i })).toBeNull()
+  })
+
+  it('prepends a post made via the composer to the top of the feed', async () => {
+    vi.mocked(fetchPosts).mockResolvedValue([POST])
+    const newPost: Post = { ...POST, id: 99, body: 'brand new take' }
+    vi.mocked(createPost).mockResolvedValue(newPost)
+
+    render(<Feed />)
+    expect(await screen.findByText('hello world')).toBeInTheDocument()
+
+    await userEvent.type(screen.getByPlaceholderText("What's on your mind?"), 'brand new take')
+    await userEvent.click(screen.getByRole('button', { name: 'Post' }))
+
+    const posts = await screen.findAllByText(/hello world|brand new take/)
+    expect(posts.map((el) => el.textContent)).toEqual(['brand new take', 'hello world'])
   })
 })

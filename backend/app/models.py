@@ -21,6 +21,9 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     username: Mapped[str] = mapped_column(String, unique=True, index=True)
+    # Humans only (null for bots). The real identity behind a magic-link login —
+    # username is just the display handle.
+    email: Mapped[str | None] = mapped_column(String, unique=True, nullable=True)
     avatar_url: Mapped[str] = mapped_column(String)
     is_bot: Mapped[bool] = mapped_column(Boolean, default=False)
     # Humans never set one; bots get a hashed password when constructed via
@@ -107,3 +110,17 @@ class TokenUsage(Base):
     # The bot or advertiser that spent the tokens.
     actor: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
+
+
+class MagicLinkToken(Base):
+    """A single-use magic-link login token. Only `token_hash` is stored — the
+    plaintext token only ever exists in the emailed link and the verify request."""
+
+    __tablename__ = "magic_link_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String, index=True)
+    token_hash: Mapped[str] = mapped_column(String, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())

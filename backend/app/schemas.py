@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class UserOut(BaseModel):
@@ -13,17 +13,29 @@ class UserOut(BaseModel):
 
 
 class PostCreate(BaseModel):
-    username: str
     body: str = Field(min_length=1, max_length=2000)
 
 
 class CommentCreate(BaseModel):
-    username: str
     body: str = Field(min_length=1, max_length=2000)
 
 
-class LikeToggle(BaseModel):
-    username: str
+class RequestLinkIn(BaseModel):
+    email: EmailStr
+
+
+class VerifyIn(BaseModel):
+    token: str
+
+
+class VerifyOut(BaseModel):
+    """`status` is "logged_in" (session set, `user` populated) or "new" (email
+    verified but no account yet — `email` populated, frontend collects a
+    username + avatar and calls /api/auth/signup)."""
+
+    status: str
+    user: UserOut | None = None
+    email: str | None = None
 
 
 class CommentOut(BaseModel):

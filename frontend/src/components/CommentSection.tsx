@@ -8,11 +8,10 @@ import { useToast } from './ToastProvider'
 
 interface Props {
   postId: number
-  username: string
   onCommentAdded: () => void
 }
 
-export default function CommentSection({ postId, username, onCommentAdded }: Props) {
+export default function CommentSection({ postId, onCommentAdded }: Props) {
   const toast = useToast()
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
@@ -45,7 +44,7 @@ export default function CommentSection({ postId, username, onCommentAdded }: Pro
     if (!body.trim()) return
     setSubmitting(true)
     try {
-      const comment = await addComment(postId, username, body.trim())
+      const comment = await addComment(postId, body.trim())
       setComments((prev) => [...prev, comment])
       setBody('')
       onCommentAdded()

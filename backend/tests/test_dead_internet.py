@@ -16,10 +16,6 @@ from app.config import settings
 from app.db import SessionLocal
 
 
-def _claim_user(client, username, avatar_file):
-    return client.post("/api/users", data={"username": username}, files={"avatar": avatar_file}).json()
-
-
 def _create_bot(client, admin_headers, username):
     return client.post(
         "/api/admin/bots",
@@ -82,12 +78,12 @@ def _drain(post_id, max_ticks=50):
     raise AssertionError("reaction jobs never terminated — possible runaway loop")
 
 
-def test_bot_to_bot_loop_is_bounded(client, avatar_file, admin_headers, monkeypatch):
+def test_bot_to_bot_loop_is_bounded(client, login, admin_headers, monkeypatch):
     monkeypatch.setattr(settings, "bots_react_to_bots", True)
     for i in range(20):
         _create_bot(client, admin_headers, f"loopbot{i}")
-    _claim_user(client, "seedhuman", avatar_file)
-    post = client.post("/api/posts", json={"username": "seedhuman", "body": "kick it off"}).json()
+    login("seedhuman@example.com", "seedhuman")
+    post = client.post("/api/posts", json={"body": "kick it off"}).json()
 
     _drain(post["id"])  # raises if it never settles
 
@@ -105,12 +101,12 @@ def test_bot_to_bot_loop_is_bounded(client, avatar_file, admin_headers, monkeypa
         db.close()
 
 
-def test_loop_off_by_default_spawns_no_generations(client, avatar_file, admin_headers):
+def test_loop_off_by_default_spawns_no_generations(client, login, admin_headers):
     # bots_react_to_bots defaults False — the normal swarm runs, but nothing deeper.
     for i in range(6):
         _create_bot(client, admin_headers, f"offbot{i}")
-    _claim_user(client, "offhuman", avatar_file)
-    post = client.post("/api/posts", json={"username": "offhuman", "body": "no loop please"}).json()
+    login("offhuman@example.com", "offhuman")
+    post = client.post("/api/posts", json={"body": "no loop please"}).json()
 
     _drain(post["id"])
 
@@ -123,10 +119,10 @@ def test_loop_off_by_default_spawns_no_generations(client, avatar_file, admin_he
         db.close()
 
 
-def test_spend_ceiling_halts_reactions(client, avatar_file, admin_headers, monkeypatch):
+def test_spend_ceiling_halts_reactions(client, login, admin_headers, monkeypatch):
     _create_bot(client, admin_headers, "ceilingbot")
-    _claim_user(client, "ceilhuman", avatar_file)
-    post = client.post("/api/posts", json={"username": "ceilhuman", "body": "too pricey"}).json()
+    login("ceilhuman@example.com", "ceilhuman")
+    post = client.post("/api/posts", json={"body": "too pricey"}).json()
 
     # Pretend the meter has already blown past a tiny ceiling.
     monkeypatch.setattr(settings, "global_spend_ceiling_usd", 0.01)
@@ -150,24 +146,6 @@ def test_spend_ceiling_halts_reactions(client, avatar_file, admin_headers, monke
         assert jobs and all(j.status == "skipped" for j in jobs)
         comments = db.query(models.Comment).filter(models.Comment.post_id == post["id"]).all()
         assert comments == []
-    finally:
-        db.close()
-
-
-def test_bot_post_triggers_swarm_only_when_loop_on(client, avatar_file, admin_headers, monkeypatch):
-    monkeypatch.setattr(settings, "bots_react_to_bots", True)
-    _create_bot(client, admin_headers, "posterbot")
-    _create_bot(client, admin_headers, "reactorbot1")
-    _create_bot(client, admin_headers, "reactorbot2")
-
-    post = client.post("/api/posts", json={"username": "posterbot", "body": "beep from a bot"}).json()
-
-    db = SessionLocal()
-    try:
-        jobs = db.query(models.BotReactionJob).filter(models.BotReactionJob.post_id == post["id"]).all()
-        # A bot-authored post now seeds a swarm — a thread with no human in it.
-        assert len(jobs) > 0
-        assert all(j.generation == 0 for j in jobs)
     finally:
         db.close()
 
@@ -243,8 +221,8 @@ def test_bot_origination_is_rate_limited(client, avatar_file, admin_headers, mon
         db.close()
 
 
-def test_costs_folds_human_less_spend_into_nobody(client, avatar_file, admin_headers):
-    _claim_user(client, "realhuman", avatar_file)
+def test_costs_folds_human_less_spend_into_nobody(client, login, admin_headers):
+    login("realhuman@example.com", "realhuman")
     _create_bot(client, admin_headers, "voidbot")
 
     db = SessionLocal()
