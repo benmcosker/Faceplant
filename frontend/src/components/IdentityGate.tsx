@@ -125,7 +125,7 @@ export default function IdentityGate({ onIdentityResolved }: Props) {
               onChange={(e) => setEmail(e.target.value)}
               autoFocus
             />
-            <Button type="submit" variant="contained" disabled={loading}>
+            <Button type="submit" variant="contained" disabled={loading} sx={{ whiteSpace: 'nowrap' }}>
               Send link
             </Button>
           </Box>

@@ -99,7 +99,7 @@ sends a one-time sign-in link (see
 [Identity: magic-link email auth](#identity-magic-link-email-auth) above);
 clicking the link is what actually gets you in.
 
-![Claim a username](docs/screenshots/01-claim-username.png)
+![Sign in with a magic link](docs/screenshots/01-claim-username.png)
 
 ### 2. New email: pick a username, an avatar, and post
 
