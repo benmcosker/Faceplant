@@ -8,6 +8,10 @@ import SponsoredCard from './SponsoredCard'
 import ErrorState from './ErrorState'
 import { useToast } from './ToastProvider'
 
+// How often to check for new posts (e.g. bot-originated ones) landing at the
+// top of the feed, without the viewer having to reload the page.
+const NEW_POSTS_POLL_MS = 5000
+
 export default function Feed() {
   const toast = useToast()
   const [posts, setPosts] = useState<Post[]>([])
@@ -32,6 +36,24 @@ export default function Feed() {
   useEffect(() => {
     load()
   }, [load])
+
+  // Silently pick up new posts (including bot-originated ones) as they land,
+  // prepending anything not already in the list. Best-effort — a failed
+  // background poll shouldn't surface an error over an otherwise-fine feed.
+  useEffect(() => {
+    const id = setInterval(() => {
+      fetchPosts()
+        .then((latest) => {
+          setPosts((prev) => {
+            const known = new Set(prev.map((p) => p.id))
+            const fresh = latest.filter((p) => !known.has(p.id))
+            return fresh.length ? [...fresh, ...prev] : prev
+          })
+        })
+        .catch(() => {})
+    }, NEW_POSTS_POLL_MS)
+    return () => clearInterval(id)
+  }, [])
 
   // The platform's targeted "sponsored" post, keyed to this viewer's profiled
   // mood. Best-effort — fetchSponsored never throws, just yields null.
