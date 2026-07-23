@@ -135,13 +135,12 @@ describe('PostCard % human counter', () => {
     )
 
     expect(screen.getByText('40% human')).toBeInTheDocument()
-    // Opening the thread starts the poll, which reports a fresher, lower share.
-    await userEvent.click(screen.getByRole('button', { name: 'Show 2 more replies' }))
+    // The poll runs continuously, whether or not the thread is open.
     expect(await screen.findByText('10% human')).toBeInTheDocument()
     expect(fetchThreadStats).toHaveBeenCalledWith(1)
   })
 
-  it('picks up a like count that changed elsewhere once the poll ticks', async () => {
+  it('picks up a like count that changed elsewhere, without opening the thread', async () => {
     vi.mocked(fetchThreadStats).mockResolvedValue({
       human_share: 1,
       human_messages: 1,
@@ -152,8 +151,21 @@ describe('PostCard % human counter', () => {
     renderCard(makePost({ like_count: 5, comment_count: 0, top_comments: [] }))
 
     expect(screen.getByRole('button', { name: '5' })).toBeInTheDocument()
-    // Opening the thread starts the same poll that drives "% human".
-    await userEvent.click(screen.getByRole('button', { name: '0' }))
     expect(await screen.findByRole('button', { name: '12' })).toBeInTheDocument()
+  })
+
+  it('picks up a comment count that changed elsewhere, without opening the thread', async () => {
+    vi.mocked(fetchThreadStats).mockResolvedValue({
+      human_share: 0.5,
+      human_messages: 1,
+      bot_messages: 1,
+      total_messages: 4,
+      like_count: 0,
+    })
+    renderCard(makePost({ like_count: 0, comment_count: 1, top_comments: [] }))
+
+    expect(screen.getByRole('button', { name: '1' })).toBeInTheDocument()
+    // total_messages (4) minus the post itself = 3 comments.
+    expect(await screen.findByRole('button', { name: '3' })).toBeInTheDocument()
   })
 })

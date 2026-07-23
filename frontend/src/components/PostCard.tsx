@@ -31,10 +31,10 @@ export default function PostCard({ post }: Props) {
   // Replies beyond the inline peek, revealed by expanding the full thread.
   const moreCount = commentCount - post.top_comments.length
 
-  // While the thread is open, poll the "% human" so it visibly craters as the
-  // swarm keeps replying — the dead-internet gut-punch, live.
+  // Poll like/comment counts and "% human" continuously — whether or not the
+  // thread is open — so the swarm's activity is visible live in the feed,
+  // not just after a refresh.
   useEffect(() => {
-    if (!showComments) return
     let cancelled = false
     const tick = () =>
       fetchThreadStats(post.id).then((s) => {
@@ -51,7 +51,7 @@ export default function PostCard({ post }: Props) {
       cancelled = true
       clearInterval(id)
     }
-  }, [showComments, post.id])
+  }, [post.id])
 
   async function handleLike() {
     try {
