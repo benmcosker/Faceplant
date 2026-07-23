@@ -121,6 +121,7 @@ describe('PostCard % human counter', () => {
       human_messages: 1,
       bot_messages: 9,
       total_messages: 10,
+      like_count: 5,
     })
     renderCard(
       makePost({
@@ -138,5 +139,21 @@ describe('PostCard % human counter', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Show 2 more replies' }))
     expect(await screen.findByText('10% human')).toBeInTheDocument()
     expect(fetchThreadStats).toHaveBeenCalledWith(1)
+  })
+
+  it('picks up a like count that changed elsewhere once the poll ticks', async () => {
+    vi.mocked(fetchThreadStats).mockResolvedValue({
+      human_share: 1,
+      human_messages: 1,
+      bot_messages: 0,
+      total_messages: 1,
+      like_count: 12,
+    })
+    renderCard(makePost({ like_count: 5, comment_count: 0, top_comments: [] }))
+
+    expect(screen.getByRole('button', { name: '5' })).toBeInTheDocument()
+    // Opening the thread starts the same poll that drives "% human".
+    await userEvent.click(screen.getByRole('button', { name: '0' }))
+    expect(await screen.findByRole('button', { name: '12' })).toBeInTheDocument()
   })
 })

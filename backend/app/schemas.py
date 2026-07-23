@@ -54,6 +54,7 @@ class ThreadStats(BaseModel):
     human_messages: int
     bot_messages: int
     total_messages: int
+    like_count: int
 
 
 class PostOut(BaseModel):
