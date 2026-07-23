@@ -6,6 +6,8 @@ import CommentSkeleton from './CommentSkeleton'
 import ErrorState from './ErrorState'
 import { useToast } from './ToastProvider'
 
+const COMMENTS_POLL_MS = 4000
+
 interface Props {
   postId: number
   onCommentAdded: () => void
@@ -20,22 +22,32 @@ export default function CommentSection({ postId, onCommentAdded }: Props) {
   const [body, setBody] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
+  // Poll while the thread is open so replies from the bot swarm show up
+  // without having to close and reopen the thread.
   useEffect(() => {
     let cancelled = false
+    let firstLoad = true
     setLoading(true)
     setError(null)
-    fetchComments(postId)
-      .then((data) => {
-        if (!cancelled) setComments(data)
-      })
-      .catch((err) => {
-        if (!cancelled) setError(errorMessage(err))
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
+    const tick = () =>
+      fetchComments(postId)
+        .then((data) => {
+          if (!cancelled) setComments(data)
+        })
+        .catch((err) => {
+          // A failed background poll shouldn't blow away comments already
+          // on screen — only surface an error if the initial load failed.
+          if (!cancelled && firstLoad) setError(errorMessage(err))
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false)
+          firstLoad = false
+        })
+    tick()
+    const id = setInterval(tick, COMMENTS_POLL_MS)
     return () => {
       cancelled = true
+      clearInterval(id)
     }
   }, [postId, retryKey])
 

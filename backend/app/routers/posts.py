@@ -16,7 +16,7 @@ PEEK_COMMENTS = 2
 
 
 def _thread_humanity(
-    db: Session, post: models.Post, author: models.User, comment_count: int
+    db: Session, post: models.Post, author: models.User, comment_count: int, like_count: int
 ) -> ThreadStats:
     """How human a thread is, by message count (the post + its comments).
 
@@ -40,6 +40,7 @@ def _thread_humanity(
         human_messages=human_messages,
         bot_messages=bot_messages,
         total_messages=total_messages,
+        like_count=like_count,
     )
 
 
@@ -66,7 +67,7 @@ def _to_post_out(db: Session, post: models.Post) -> PostOut:
         )
         for c in peek
     ]
-    humanity = _thread_humanity(db, post, author, comment_count)
+    humanity = _thread_humanity(db, post, author, comment_count, like_count)
     return PostOut(
         id=post.id,
         body=post.body,
@@ -105,7 +106,10 @@ def thread_stats(post_id: int, db: Session = Depends(get_db)):
     comment_count = (
         db.query(func.count(models.Comment.id)).filter(models.Comment.post_id == post_id).scalar()
     ) or 0
-    return _thread_humanity(db, post, author, comment_count)
+    like_count = (
+        db.query(func.count(models.Like.id)).filter(models.Like.post_id == post_id).scalar()
+    ) or 0
+    return _thread_humanity(db, post, author, comment_count, like_count)
 
 
 @router.post("", response_model=PostOut)

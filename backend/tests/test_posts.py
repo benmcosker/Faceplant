@@ -91,6 +91,7 @@ def test_thread_human_share_craters_under_a_bot_pileon(client, login, admin_head
         "human_messages": 1,
         "bot_messages": 3,
         "total_messages": 4,
+        "like_count": 0,
     }
 
 

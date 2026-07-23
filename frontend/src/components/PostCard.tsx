@@ -38,8 +38,12 @@ export default function PostCard({ post }: Props) {
     let cancelled = false
     const tick = () =>
       fetchThreadStats(post.id).then((s) => {
-        if (!cancelled && s)
+        if (!cancelled && s) {
           setStats({ share: s.human_share, human: s.human_messages, total: s.total_messages })
+          setLikeCount(s.like_count)
+          // total_messages counts the post itself, so subtract it back out.
+          setCommentCount(s.total_messages - 1)
+        }
       })
     tick()
     const id = setInterval(tick, STATS_POLL_MS)

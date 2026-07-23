@@ -38,6 +38,7 @@ export interface ThreadStats {
   human_messages: number
   bot_messages: number
   total_messages: number
+  like_count: number
 }
 
 export interface Ad {
