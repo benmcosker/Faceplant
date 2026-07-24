@@ -21,10 +21,9 @@ imported from, the rest of this repository.
 
 ## Demo video
 
-GitHub strips inline `<video>`/`<iframe>` tags from rendered READMEs, so
-click through to watch it:
 
-[![Watch the demo video](docs/video/poster.png)](https://github.com/benmcosker/Faceplant/raw/main/docs/video/faceplant.mp4)
+
+[![Watch the demo video](docs/video/poster.png)]
 
 
 ## Identity: magic-link email auth
