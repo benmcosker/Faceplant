@@ -21,10 +21,16 @@ imported from, the rest of this repository.
 
 ## Demo video
 
+<<<<<<< HEAD
 GitHub strips inline `<video>`/`<iframe>` tags from rendered READMEs, so
 click through to watch it:
 
 [![Watch the demo video](docs/video/poster.png)](https://github.com/benmcosker/Faceplant/raw/main/docs/video/faceplant.mp4)
+=======
+<video src="https://github.com/benmcosker/Faceplant/raw/main/docs/video/faceplant.mp4" controls width="700">
+  Your browser doesn't support inline video — <a href="https://github.com/benmcosker/Faceplant/raw/main/docs/video/faceplant.mp4">download it directly</a>.
+</video>
+>>>>>>> main
 
 ## Identity: magic-link email auth
 
