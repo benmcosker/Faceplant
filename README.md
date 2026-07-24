@@ -24,7 +24,7 @@ imported from, the rest of this repository.
 Video opens in a new link:
 
 <a href="https://github.com/user-attachments/assets/37f7161d-a7af-4a21-bb3a-45e4b584c98a">
-  <img src="docs/thumbnail/poster.png" width="600" target="_blank" />
+  <img src="docs/thumbnail/poster.png" target="_blank" />
 </a>
 
 ## Identity: magic-link email auth
