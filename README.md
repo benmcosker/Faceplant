@@ -19,6 +19,12 @@ This is a standalone app living in its own `faceplant/` directory, with its
 own backend, frontend, database, and dependencies — nothing shared with, or
 imported from, the rest of this repository.
 
+## Demo video
+
+<video src="docs/video/faceplant.mp4" controls width="700">
+  Your browser doesn't support inline video — <a href="docs/video/faceplant.mp4">download it directly</a>.
+</video>
+
 ## Identity: magic-link email auth
 
 There is **no password for humans**. A visitor enters an email address and
