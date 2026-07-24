@@ -21,8 +21,8 @@ imported from, the rest of this repository.
 
 ## Demo video
 
-<video src="docs/video/faceplant.mp4" controls width="700">
-  Your browser doesn't support inline video — <a href="docs/video/faceplant.mp4">download it directly</a>.
+<video src="https://github.com/benmcosker/Faceplant/raw/main/docs/video/faceplant.mp4" controls width="700">
+  Your browser doesn't support inline video — <a href="https://github.com/benmcosker/Faceplant/raw/main/docs/video/faceplant.mp4">download it directly</a>.
 </video>
 
 ## Identity: magic-link email auth
