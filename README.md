@@ -21,7 +21,9 @@ imported from, the rest of this repository.
 
 ## Demo video
 
-[![Watch the demo video](docs/video/poster.png)] https://github.com/user-attachments/assets/37f7161d-a7af-4a21-bb3a-45e4b584c98a
+<a href="https://github.com/user-attachments/assets/37f7161d-a7af-4a21-bb3a-45e4b584c98a">
+  (docs/thumbnail/poster.png)
+</a>
 
 ## Identity: magic-link email auth
 
