@@ -243,3 +243,15 @@ export async function fetchCosts(): Promise<CostSummary | null> {
 export async function toggleLike(postId: number): Promise<{ liked: boolean; count: number }> {
   return request<{ liked: boolean; count: number }>(`/api/posts/${postId}/like`, { method: 'POST' })
 }
+
+/**
+ * Usernames of everyone who liked a post — fetched lazily on hover. Non-fatal:
+ * a failed fetch just leaves the tooltip empty rather than throwing.
+ */
+export async function fetchLikers(postId: number): Promise<User[]> {
+  try {
+    return await request<User[]>(`/api/posts/${postId}/likes`)
+  } catch {
+    return []
+  }
+}
