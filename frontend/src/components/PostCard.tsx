@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Avatar, Box, Button, Card, CardContent, Stack, Typography } from '@mui/material'
+import { Avatar, Box, Button, Card, CardContent, Stack, Tooltip, Typography } from '@mui/material'
 import FavoriteIcon from '@mui/icons-material/Favorite'
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder'
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutlined'
-import { errorMessage, fetchThreadStats, toggleLike, type Post } from '../api'
+import { errorMessage, fetchLikers, fetchThreadStats, toggleLike, type Post, type User } from '../api'
 import CommentItem from './CommentItem'
 import CommentSection from './CommentSection'
 import ThreadHumanity from './ThreadHumanity'
@@ -20,6 +20,8 @@ export default function PostCard({ post }: Props) {
   const toast = useToast()
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(post.like_count)
+  const [likers, setLikers] = useState<User[] | null>(null)
+  const [likersLoading, setLikersLoading] = useState(false)
   const [commentCount, setCommentCount] = useState(post.comment_count)
   const [showComments, setShowComments] = useState(false)
   const [stats, setStats] = useState({
@@ -53,6 +55,12 @@ export default function PostCard({ post }: Props) {
     }
   }, [post.id])
 
+  // The cached likers list goes stale whenever the count changes (a like, or
+  // someone else's picked up by the poll above) — drop it so the next hover refetches.
+  useEffect(() => {
+    setLikers(null)
+  }, [likeCount])
+
   async function handleLike() {
     try {
       const result = await toggleLike(post.id)
@@ -62,6 +70,20 @@ export default function PostCard({ post }: Props) {
       toast.error(errorMessage(err))
     }
   }
+
+  async function handleLikeHover() {
+    if (likers !== null || likersLoading || likeCount === 0) return
+    setLikersLoading(true)
+    setLikers(await fetchLikers(post.id))
+    setLikersLoading(false)
+  }
+
+  const likersTitle =
+    likeCount === 0
+      ? 'No likes yet'
+      : likers === null
+        ? 'Loading…'
+        : likers.map((u) => u.username).join(', ')
 
   return (
     <Card variant="outlined" sx={{ mb: 2 }}>
@@ -78,13 +100,15 @@ export default function PostCard({ post }: Props) {
             </Typography>
 
             <Stack direction="row" spacing={1} sx={{ mt: 1.5, alignItems: 'center' }}>
-              <Button
-                size="small"
-                startIcon={liked ? <FavoriteIcon color="secondary" /> : <FavoriteBorderIcon />}
-                onClick={handleLike}
-              >
-                {likeCount}
-              </Button>
+              <Tooltip title={likersTitle} onOpen={handleLikeHover} describeChild>
+                <Button
+                  size="small"
+                  startIcon={liked ? <FavoriteIcon color="secondary" /> : <FavoriteBorderIcon />}
+                  onClick={handleLike}
+                >
+                  {likeCount}
+                </Button>
+              </Tooltip>
               <Button
                 size="small"
                 startIcon={<ChatBubbleOutlineIcon />}
