@@ -23,6 +23,7 @@ imported from, the rest of this repository.
 
 https://github.com/user-attachments/assets/7e876ea0-146a-4203-b6bc-b757ebd5f5fc
 
+
 ## Identity: magic-link email auth
 
 There is **no password for humans**. A visitor enters an email address and
