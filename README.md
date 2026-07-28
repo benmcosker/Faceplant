@@ -21,10 +21,10 @@ imported from, the rest of this repository.
 
 ## Demo video
 
-Video opens in a new link:
+Video opens in same window (README file limitation)
 
 <a href="https://github.com/user-attachments/assets/37f7161d-a7af-4a21-bb3a-45e4b584c98a">
-  <img src="docs/thumbnail/poster.png" target="_blank" />
+  <img src="docs/thumbnail/poster.png"  />
 </a>
 
 ## Identity: magic-link email auth
