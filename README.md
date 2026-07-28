@@ -21,14 +21,7 @@ imported from, the rest of this repository.
 
 ## Demo video
 
-GitHub can't play video inline from a README, so the thumbnail below links to
-the **raw** file — click it to download `docs/faceplant.mp4` and watch it
-locally (opens/downloads directly, rather than navigating to GitHub's blob
-viewer).
-
-<a href="https://raw.githubusercontent.com/benmcosker/Faceplant/main/docs/faceplant.mp4" border="0">
-  <img src="docs/thumbnail/poster.png"  />
-</a>
+https://github.com/user-attachments/assets/7e876ea0-146a-4203-b6bc-b757ebd5f5fc
 
 ## Identity: magic-link email auth
 
