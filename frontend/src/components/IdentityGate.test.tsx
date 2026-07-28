@@ -11,9 +11,17 @@ vi.mock('../api', async (importOriginal) => {
     verifyMagicLink: vi.fn(),
     completeSignup: vi.fn(),
     createPost: vi.fn(),
+    fetchMe: vi.fn(),
   }
 })
-import { completeSignup, createPost, requestMagicLink, verifyMagicLink, type User } from '../api'
+import {
+  completeSignup,
+  createPost,
+  fetchMe,
+  requestMagicLink,
+  verifyMagicLink,
+  type User,
+} from '../api'
 
 const NEW_USER: User = {
   id: 2,
@@ -31,6 +39,7 @@ const RETURNING_USER: User = {
 
 beforeEach(() => {
   window.history.replaceState({}, '', '/')
+  vi.mocked(fetchMe).mockResolvedValue(null)
 })
 
 // jsdom doesn't implement createObjectURL; the avatar preview calls it once a
@@ -49,6 +58,27 @@ describe('IdentityGate', () => {
 
     expect(await screen.findByText(/newperson@example.com/)).toBeInTheDocument()
     expect(requestMagicLink).toHaveBeenCalledWith('newperson@example.com')
+  })
+
+  it('recovers once the tab regains focus, if a sibling tab verified the link', async () => {
+    // Magic links commonly open in a new tab: the tab that requested the link
+    // is left on "sent" with no idea the token was verified elsewhere. Coming
+    // back to that tab should recheck auth and log it in too.
+    vi.mocked(requestMagicLink).mockResolvedValue(undefined)
+    const onIdentityResolved = vi.fn()
+
+    render(<IdentityGate onIdentityResolved={onIdentityResolved} />)
+
+    await userEvent.type(screen.getByLabelText('Email'), 'returninguser@example.com')
+    await userEvent.click(screen.getByRole('button', { name: 'Send link' }))
+    expect(await screen.findByText(/returninguser@example.com/)).toBeInTheDocument()
+
+    vi.mocked(fetchMe).mockResolvedValue(RETURNING_USER)
+    document.dispatchEvent(new Event('visibilitychange'))
+
+    await waitFor(() => {
+      expect(onIdentityResolved).toHaveBeenCalledWith(RETURNING_USER)
+    })
   })
 
   it('logs a returning email in directly once the link is verified', async () => {
