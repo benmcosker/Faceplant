@@ -24,7 +24,7 @@ imported from, the rest of this repository.
 Video opens in same window (README file limitation)
 
 <a href="https://github.com/benmcosker/Faceplant/tree/main/docs/faceplant.mp4
-">
+" border="0">
   <img src="docs/thumbnail/poster.png"  />
 </a>
 
