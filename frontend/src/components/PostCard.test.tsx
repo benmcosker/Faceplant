@@ -102,6 +102,14 @@ describe('PostCard reply peek', () => {
     expect(screen.getByText('onlyreply')).toBeInTheDocument()
     expect(screen.queryByText(/Show .* repl/)).not.toBeInTheDocument()
   })
+
+  it('shows "show more" even when the peek is empty, as long as replies exist', () => {
+    // Mirrors a freshly-created post: top_comments is frozen at [] from
+    // creation time, but comment_count has since climbed as bots replied.
+    renderCard(makePost({ comment_count: 3, top_comments: [] }))
+
+    expect(screen.getByRole('button', { name: 'Show 3 more replies' })).toBeInTheDocument()
+  })
 })
 
 describe('PostCard % human counter', () => {

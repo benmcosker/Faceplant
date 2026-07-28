@@ -121,8 +121,12 @@ export default function PostCard({ post }: Props) {
             </Stack>
 
             {/* Peek: the first replies inline, so the swarm is visible without a
-                click. Expands to the full thread on demand. */}
-            {!showComments && post.top_comments.length > 0 && (
+                click. Expands to the full thread on demand. top_comments is
+                frozen on the post prop (set at creation/fetch time) while
+                commentCount keeps climbing via polling, so gate on moreCount
+                too — otherwise a post with no comments yet never shows the
+                "show more" link even after replies pile on. */}
+            {!showComments && (post.top_comments.length > 0 || moreCount > 0) && (
               <Stack
                 spacing={1.5}
                 sx={{ mt: 1.5, pl: 2, borderLeft: '2px solid', borderColor: 'divider' }}
