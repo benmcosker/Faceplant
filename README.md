@@ -21,12 +21,8 @@ imported from, the rest of this repository.
 
 ## Demo video
 
-Video opens in same window (README file limitation)
+https://github.com/user-attachments/assets/7e876ea0-146a-4203-b6bc-b757ebd5f5fc
 
-<a href="https://github.com/benmcosker/Faceplant/tree/main/docs/faceplant.mp4
-" border="0">
-  <img src="docs/thumbnail/poster.png"  />
-</a>
 
 ## Identity: magic-link email auth
 
