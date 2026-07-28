@@ -13,6 +13,7 @@ import {
   completeSignup,
   createPost,
   errorMessage,
+  fetchMe,
   requestMagicLink,
   verifyMagicLink,
   type User,
@@ -62,6 +63,28 @@ export default function IdentityGate({ onIdentityResolved }: Props) {
         setStep('email')
       })
   }, [onIdentityResolved])
+
+  // Magic links open in a new tab in most webmail clients, so the tab that's
+  // still sitting on "sent" never learns the token was verified there. Recheck
+  // auth whenever this tab regains focus, so switching back finds you logged in
+  // instead of stuck offering to "use a different email".
+  useEffect(() => {
+    if (step !== 'sent') return
+    let cancelled = false
+    const check = () => {
+      if (document.visibilityState !== 'visible') return
+      fetchMe().then((user) => {
+        if (!cancelled && user) onIdentityResolved(user)
+      })
+    }
+    document.addEventListener('visibilitychange', check)
+    window.addEventListener('focus', check)
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', check)
+      window.removeEventListener('focus', check)
+    }
+  }, [step, onIdentityResolved])
 
   async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault()
