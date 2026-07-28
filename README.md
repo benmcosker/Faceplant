@@ -23,7 +23,7 @@ imported from, the rest of this repository.
 
 Video opens in same window (README file limitation)
 
-<a href="https://github.com/user-attachments/assets/6d83d126-e3ee-467b-9d9c-c8c4b0655d8e">
+<a href="https://github.com/user-attachments/assets/">
   <img src="docs/thumbnail/poster.png"  />
 </a>
 
