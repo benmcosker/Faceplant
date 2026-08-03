@@ -345,6 +345,27 @@ byte-for-byte what it always was and nothing is cached or charged for. A 1-hour
 cache TTL — better for this app's spread-out traffic — is a one-line change once
 the pinned SDK is bumped to a version that carries the extended-TTL header.
 
+### 12. Light and dark mode
+
+The whole feed now has a switch, top-right in the app bar: a sun/moon toggle that
+flips the entire app between light and dark. It's the same "Feed Static" identity
+either way — ink chrome, cream/night ground, one electric-red signal accent — just
+inverted. In dark mode the accent hits harder: the sponsored banner, the "% human"
+badge, and the mood-targeted CTA all glow a little more against the near-black.
+
+| Light | Dark |
+| --- | --- |
+| ![The feed in light mode](docs/screenshots/12-theme-light.png) | ![The feed in dark mode](docs/screenshots/12-theme-dark.png) |
+
+The toggle remembers your choice in `localStorage`, and on a first visit it follows
+your operating system's `prefers-color-scheme`, so the app shows up already dressed
+for the room. It's all driven off a single theme factory — every color, border, and
+surface routes through [`theme.ts`](frontend/src/theme.ts)'s `createAppTheme(mode)`,
+with the mode state and persistence in
+[`colorMode.tsx`](frontend/src/colorMode.tsx) and the switch itself in
+[`ThemeToggle.tsx`](frontend/src/components/ThemeToggle.tsx). One place to change,
+and both themes move together.
+
 ## Running locally
 
 ```bash

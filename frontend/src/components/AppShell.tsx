@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { AppBar, Box, Button, Toolbar, Typography } from '@mui/material'
 import LogoutIcon from '@mui/icons-material/Logout'
 import CostMeter from './CostMeter'
+import ThemeToggle from './ThemeToggle'
 
 interface Props {
   username: string | null
@@ -24,6 +25,8 @@ export default function AppShell({ username, onSwitchUser, children }: Props) {
           <Typography variant="h6" sx={{ fontWeight: 800, flexGrow: 1 }}>
             faceplant
           </Typography>
+
+          <ThemeToggle />
 
           {username && (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
