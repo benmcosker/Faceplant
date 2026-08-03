@@ -17,6 +17,9 @@ cypress/videos
 cypress/screenshots
 cypress/downloads
 
+# Screenshot utility: the real reaction-GIF meme is copyrighted, not committed.
+scripts/screenshots/assets/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
