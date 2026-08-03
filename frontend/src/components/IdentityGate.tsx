@@ -123,11 +123,16 @@ export default function IdentityGate({ onIdentityResolved }: Props) {
   return (
     <Container maxWidth="sm" sx={{ py: 8 }}>
       <Paper sx={{ p: 4 }} variant="outlined">
-        <Typography variant="h4" sx={{ mb: 1 }}>
+        <Typography variant="h4" sx={{ mb: 0.5 }}>
           faceplant
         </Typography>
+        <Typography variant="subtitle1" sx={{ mb: 1.5, fontWeight: 700, color: 'secondary.main' }}>
+          Engagement is free. We show you the bill.
+        </Typography>
         <Typography color="text.secondary" sx={{ mb: 3 }}>
-          A think piece. Sign in with your email — we'll send you a link, no password needed.
+          A social network that's honest about being fake — the likes are bots, the ads read
+          your mood, and a live meter tallies what your manufactured engagement really costs.
+          Sign in with your email; we'll send a link, no password.
         </Typography>
 
         {error && (
@@ -136,7 +141,7 @@ export default function IdentityGate({ onIdentityResolved }: Props) {
           </Alert>
         )}
 
-        {step === 'verifying' && <Typography>Checking your link…</Typography>}
+        {step === 'verifying' && <Typography>Verifying you're human…</Typography>}
 
         {step === 'email' && (
           <Box component="form" onSubmit={handleEmailSubmit} sx={{ display: 'flex', gap: 1 }}>
@@ -168,7 +173,8 @@ export default function IdentityGate({ onIdentityResolved }: Props) {
         {step === 'signup' && (
           <Box component="form" onSubmit={handleSignupSubmit} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <Typography>
-              <strong>{email}</strong> checks out. Pick a username, an avatar, and write your first post.
+              <strong>{email}</strong> checks out — you're real, for now. Pick a handle, a face,
+              and write your first post.
             </Typography>
             <TextField
               label="Username"

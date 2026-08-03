@@ -92,7 +92,7 @@ export default function Feed() {
       ) : (
         <>
           {!loading && posts.length === 0 && (
-            <Alert severity="info">No posts yet. Be the first.</Alert>
+            <Alert severity="info">No posts yet. Give the swarm something to react to.</Alert>
           )}
           {loading ? (
             <Box role="status" aria-label="Loading posts">
@@ -113,7 +113,7 @@ export default function Feed() {
           )}
           {hasMore && posts.length > 0 && (
             <Button fullWidth onClick={loadMore} disabled={loadingMore}>
-              {loadingMore ? 'Loading…' : 'Load more'}
+              {loadingMore ? 'Loading…' : 'Manufacture more'}
             </Button>
           )}
         </>
