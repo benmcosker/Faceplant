@@ -55,6 +55,15 @@ class Settings(BaseSettings):
     # waves. See reconcile_reaction_batches, polled separately by the scheduler.
     use_batch_api: bool = False
 
+    # Prepend a large, shared "house style" block to every reaction's system prompt
+    # and cache it (prompt caching). Off by default. The block is byte-identical
+    # across all bots, so repeat reactions within the cache window read it at ~0.1x.
+    # NOTE: it only actually caches when the shared prefix exceeds the model's minimum
+    # cacheable size (4096 tokens on claude-haiku-4-5) AND is re-read inside the 5-min
+    # TTL — so the payoff is real for bursty/high-volume swarms and nil for a lone,
+    # widely-spaced reaction. Metering (usage.py) prices cache reads/writes correctly.
+    use_prompt_caching: bool = False
+
     # "Dead internet": bots reacting to other bots' activity, so threads sustain
     # themselves with no humans. OFF by default — this is real, unbounded-by-
     # default Anthropic spend with no human in the loop. When enabled, the guard

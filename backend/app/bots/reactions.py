@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from .. import giphy, models, usage
 from ..config import settings
 from ..db import SessionLocal
+from .house_style import HOUSE_STYLE_GUIDE
 from .roster import ROSTER
 
 logger = logging.getLogger(__name__)
@@ -199,11 +200,34 @@ def _get_recent_comments(db: Session, post_id: int, limit: int = THREAD_CONTEXT_
     return [(username, comment.body) for comment, username in reversed(rows)]
 
 
-def _system_prompt_for(bot: models.User) -> str:
+def _persona_system_prompt(bot: models.User) -> str:
     """The persona system prompt — GIF-first bots get the caption+tag JSON prompt."""
     if bot.username in _USES_GIPHY_BY_USERNAME:
         return _build_giphy_system_prompt(bot)
     return _build_system_prompt(bot)
+
+
+def _system_param_for(bot: models.User):
+    """The `system` value to send for this bot's reaction.
+
+    With caching off (the default) this is the plain persona string — byte-for-byte
+    what it has always been. With settings.use_prompt_caching on, it becomes a list
+    of two blocks: the large, shared house-style guide first, marked for caching so
+    repeat reactions read it cheaply, then the per-bot persona block (unchanged) after
+    the breakpoint. The shared block must stay identical across every request or the
+    cached prefix is invalidated — which is why the persona lives in its own block.
+    """
+    persona = _persona_system_prompt(bot)
+    if not settings.use_prompt_caching:
+        return persona
+    return [
+        {
+            "type": "text",
+            "text": HOUSE_STYLE_GUIDE,
+            "cache_control": {"type": "ephemeral"},
+        },
+        {"type": "text", "text": persona},
+    ]
 
 
 def _decode_reaction_text(bot: models.User, message) -> str:
@@ -232,7 +256,7 @@ def _generate_reaction_text(
     response = client.messages.create(
         model=bot.bot_model or settings.default_bot_model,
         max_tokens=160,
-        system=_system_prompt_for(bot),
+        system=_system_param_for(bot),
         messages=[{"role": "user", "content": _build_user_prompt(post, thread_comments or [])}],
     )
     return _decode_reaction_text(bot, response), response
@@ -405,7 +429,7 @@ def _submit_due_reaction_batch() -> None:
                     params=MessageCreateParamsNonStreaming(
                         model=bot.bot_model or settings.default_bot_model,
                         max_tokens=160,
-                        system=_system_prompt_for(bot),
+                        system=_system_param_for(bot),
                         messages=[
                             {"role": "user", "content": _build_user_prompt(post, thread_comments)}
                         ],
