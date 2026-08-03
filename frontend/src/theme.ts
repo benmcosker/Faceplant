@@ -43,10 +43,24 @@ export function createAppTheme(mode: ColorMode): Theme {
         : { primary: INK, secondary: '#616e7c' },
     },
     shape: { borderRadius: 10 },
+    // A deliberate "Feed Static" type scale: headlines set tight and confident
+    // (heavier weight, negative tracking — the modern editorial look), body copy
+    // given room to breathe (1.55 line-height) for actual readability, and the
+    // small label styles (caption, overline) tracked wider so they read as UI
+    // chrome, not prose. Defining it here means every Typography variant across
+    // the app sharpens at once, with no per-component churn.
     typography: {
       fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-      h4: { fontWeight: 800 },
-      h6: { fontWeight: 700 },
+      h4: { fontSize: '1.5rem', fontWeight: 800, lineHeight: 1.2, letterSpacing: '-0.015em' },
+      h5: { fontSize: '1.25rem', fontWeight: 800, lineHeight: 1.25, letterSpacing: '-0.012em' },
+      h6: { fontSize: '1.125rem', fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.01em' },
+      subtitle1: { fontSize: '1rem', fontWeight: 700, lineHeight: 1.35 },
+      subtitle2: { fontSize: '0.8125rem', fontWeight: 700, lineHeight: 1.35, letterSpacing: '0.01em' },
+      body1: { fontSize: '1rem', lineHeight: 1.55, letterSpacing: '0.003em' },
+      body2: { fontSize: '0.875rem', lineHeight: 1.5, letterSpacing: '0.005em' },
+      caption: { fontSize: '0.75rem', lineHeight: 1.4, letterSpacing: '0.02em' },
+      overline: { fontSize: '0.6875rem', fontWeight: 800, lineHeight: 1.6, letterSpacing: '0.09em' },
+      button: { fontWeight: 700, letterSpacing: '0.02em' },
     },
     components: {
       MuiCard: {
