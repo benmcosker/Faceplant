@@ -10,9 +10,19 @@ from . import models
 from .config import settings
 from .db import get_db
 
-SESSION_COOKIE_NAME = "faceplant_session"
+SESSION_COOKIE_BASE_NAME = "faceplant_session"
 
 _serializer = URLSafeTimedSerializer(settings.session_secret_key, salt="faceplant-session")
+
+
+def _cookie_name() -> str:
+    """The session cookie's name, optionally hardened with the __Host- prefix.
+
+    The prefix binds the cookie to this exact origin; the browser enforces that
+    it carry Secure + Path=/ and no Domain (config validates the Secure part).
+    """
+    prefix = "__Host-" if settings.cookie_host_prefix else ""
+    return f"{prefix}{SESSION_COOKIE_BASE_NAME}"
 
 
 def utcnow() -> datetime:
@@ -34,10 +44,10 @@ def hash_token(token: str) -> str:
 def set_session_cookie(response: Response, user_id: int) -> None:
     token = _serializer.dumps(user_id)
     response.set_cookie(
-        key=SESSION_COOKIE_NAME,
+        key=_cookie_name(),
         value=token,
         httponly=True,
-        samesite="lax",
+        samesite=settings.cookie_samesite,
         secure=settings.cookie_secure,
         max_age=settings.session_ttl_days * 86400,
         path="/",
@@ -45,11 +55,20 @@ def set_session_cookie(response: Response, user_id: int) -> None:
 
 
 def clear_session_cookie(response: Response) -> None:
-    response.delete_cookie(key=SESSION_COOKIE_NAME, path="/")
+    # Mirror the attributes used when setting so the delete matches the cookie
+    # the browser is holding (Secure / SameSite must line up, especially for a
+    # SameSite=None or __Host- cookie).
+    response.delete_cookie(
+        key=_cookie_name(),
+        path="/",
+        httponly=True,
+        samesite=settings.cookie_samesite,
+        secure=settings.cookie_secure,
+    )
 
 
 def _read_session_user_id(request: Request) -> int | None:
-    token = request.cookies.get(SESSION_COOKIE_NAME)
+    token = request.cookies.get(_cookie_name())
     if not token:
         return None
     try:

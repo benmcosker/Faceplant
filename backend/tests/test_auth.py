@@ -1,7 +1,12 @@
 from datetime import timedelta
 
+import pytest
+from fastapi.testclient import TestClient
+from pydantic import ValidationError
+
 from app import models
 from app.auth import hash_token, utcnow
+from app.config import Settings
 from app.db import SessionLocal
 from app.email import send_magic_link_email
 
@@ -151,3 +156,74 @@ def test_logout_clears_session(client, login):
     assert logout.status_code == 200
 
     assert client.get("/api/auth/me").status_code == 401
+
+
+def _signup_response(client, avatar_file, monkeypatch, email, username):
+    """Run the signup flow and return the raw response that sets the session
+    cookie, so its Set-Cookie attributes can be inspected."""
+    sent = _capture_links(monkeypatch)
+    client.post("/api/auth/request-link", json={"email": email})
+    token = _token_from(sent, email)
+    return client.post(
+        "/api/auth/signup",
+        data={"token": token, "username": username},
+        files={"avatar": avatar_file},
+    )
+
+
+def test_session_cookie_default_attributes(client, avatar_file, monkeypatch):
+    resp = _signup_response(client, avatar_file, monkeypatch, "cookie@example.com", "cookieuser")
+    assert resp.status_code == 200
+    set_cookie = resp.headers["set-cookie"].lower()
+    assert "faceplant_session=" in set_cookie
+    assert "__host-" not in set_cookie
+    assert "httponly" in set_cookie
+    assert "samesite=lax" in set_cookie
+    # cookie_secure defaults False in the test env, so no Secure flag.
+    assert "secure" not in set_cookie
+
+
+def test_host_prefix_and_secure_cookie_round_trip(avatar_file, monkeypatch):
+    # Harden the cookie the way a real HTTPS deployment would, and drive the
+    # flow over https so the httpx cookie jar will send the Secure cookie back.
+    from app.auth import settings as auth_settings
+    from app.main import app
+
+    monkeypatch.setattr(auth_settings, "cookie_secure", True)
+    monkeypatch.setattr(auth_settings, "cookie_host_prefix", True)
+    monkeypatch.setattr(auth_settings, "cookie_samesite", "none")
+
+    client = TestClient(app, base_url="https://testserver")
+    resp = _signup_response(client, avatar_file, monkeypatch, "secure@example.com", "secureuser")
+    assert resp.status_code == 200
+    set_cookie = resp.headers["set-cookie"].lower()
+    assert "__host-faceplant_session=" in set_cookie
+    assert "secure" in set_cookie
+    assert "samesite=none" in set_cookie
+
+    # The hardened cookie still authenticates and still clears on logout.
+    assert client.get("/api/auth/me").status_code == 200
+    assert client.post("/api/auth/logout").status_code == 200
+    assert client.get("/api/auth/me").status_code == 401
+
+
+def test_config_rejects_samesite_none_without_secure(monkeypatch):
+    monkeypatch.setenv("COOKIE_SAMESITE", "none")
+    monkeypatch.setenv("COOKIE_SECURE", "false")
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+def test_config_rejects_host_prefix_without_secure(monkeypatch):
+    monkeypatch.setenv("COOKIE_HOST_PREFIX", "true")
+    monkeypatch.setenv("COOKIE_SECURE", "false")
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+def test_config_allows_samesite_none_with_secure(monkeypatch):
+    monkeypatch.setenv("COOKIE_SAMESITE", "none")
+    monkeypatch.setenv("COOKIE_SECURE", "true")
+    s = Settings()
+    assert s.cookie_samesite == "none"
+    assert s.cookie_secure is True
