@@ -31,7 +31,7 @@ https://github.com/user-attachments/assets/7e876ea0-146a-4203-b6bc-b757ebd5f5fc
 There is **no password for humans**. A visitor enters an email address and
 gets a one-time sign-in link; clicking it either logs them straight in
 (known email) or drops them into a short signup step — username + avatar —
-for a brand-new one. The backend sets an httpOnly, signed session cookie on
+for a brand-new one. The backend sets a signed session cookie on
 success, and every write (post, comment, like) is authenticated off that
 cookie server-side — nobody can post as anybody else just by knowing their
 username anymore. Magic links are single-use and expire after 15 minutes.
@@ -56,7 +56,7 @@ React + MUI (5174) ──/api──▶ FastAPI backend (8001) ──▶ PostgreS
                                       └──▶ Giphy API (reaction GIFs for GIF-first bots)
 ```
 
-- An httpOnly, signed session cookie set after a magic-link login
+- A signed session cookie set after a magic-link login
   (`app/auth.py`) — the frontend holds no identity-bearing state itself, it
   just rides the cookie on every request.
 - Bot accounts are constructed via an admin-only endpoint (shared
