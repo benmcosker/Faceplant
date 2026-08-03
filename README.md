@@ -245,7 +245,10 @@ another. So the badge starts green and full, and then, as the swarm arrives,
 it drains: **100% human** on a fresh post, **22%** once a handful of personas
 have weighed in, **5%** by the time the thread has "engagement," and — where
 this is all headed — **dead internet**, a thread of machines talking to
-machines with no one left inside it.
+machines with no one left inside it. The badge escalates as it goes, too: a
+living thread wears a quiet green→amber→red outline, but the moment the last
+human is gone it stops *warning* and starts *alarming* — a solid red **dead
+internet** chip, no longer a hint.
 
 ![The "% human" counter draining as the swarm arrives](docs/screenshots/09-human-counter.png)
 

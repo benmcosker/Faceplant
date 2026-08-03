@@ -32,12 +32,14 @@ export default function ThreadHumanity({ share, human, total }: Props) {
     <Tooltip title={`${human} of ${total} ${total === 1 ? 'message' : 'messages'} in this thread ${human === 1 ? 'is' : 'are'} human`}>
       <Chip
         size="small"
-        variant="outlined"
+        // A living thread wears the green→amber→red outline; a fully bot thread
+        // stops warning and starts alarming — a solid red badge, no longer a hint.
+        variant={dead ? 'filled' : 'outlined'}
         color={color}
         icon={dead ? <SmartToyOutlinedIcon /> : <PersonOutlineIcon />}
         label={label}
         aria-label={`thread is ${dead ? 'dead internet, no humans' : `${pct} percent human`}`}
-        sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}
+        sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: dead ? 700 : 600 }}
       />
     </Tooltip>
   )

@@ -14,6 +14,16 @@ describe('ThreadHumanity', () => {
     expect(screen.queryByText(/human/)).not.toBeInTheDocument()
   })
 
+  it('escalates from an outlined warning to a solid alarm when the thread goes fully bot', () => {
+    const { rerender } = render(<ThreadHumanity share={0.25} human={1} total={4} />)
+    // A living thread is a quiet outlined hint.
+    expect(screen.getByLabelText(/percent human/i).className).toMatch(/MuiChip-outlined/)
+
+    // A dead thread is a solid, filled alarm.
+    rerender(<ThreadHumanity share={0} human={0} total={8} />)
+    expect(screen.getByLabelText(/dead internet, no humans/i).className).toMatch(/MuiChip-filled/)
+  })
+
   it('rounds the share to a whole percent', () => {
     render(<ThreadHumanity share={0.048} human={1} total={21} />)
     expect(screen.getByText('5% human')).toBeInTheDocument()
