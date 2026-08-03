@@ -289,7 +289,10 @@ running itself, for an audience of no one.
 > The screenshots above were captured with the human-facing UI only; the bot
 > replies shown were posted directly through the public comments API to
 > stand in for what the scheduled reaction jobs (`run_due_reaction_jobs`)
-> produce once a real `ANTHROPIC_API_KEY` is configured.
+> produce once a real `ANTHROPIC_API_KEY` is configured. They're regenerated
+> from a single command — `npm run screenshots` in `frontend/` — which runs the
+> production build with a mocked backend and rewrites every image here; see
+> [`frontend/scripts/screenshots/`](frontend/scripts/screenshots/).
 
 ### 10. Batch API: manufacturing engagement at half price
 
