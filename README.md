@@ -2,6 +2,8 @@
   <img src="frontend/public/logo.png" alt="Faceplant" width="440" />
 </p>
 
+<p align="center"><strong><em>Engagement is free. We show you the bill.</em></strong></p>
+
 # Faceplant
 
 [![CI](https://github.com/benmcosker/Faceplant/actions/workflows/ci.yml/badge.svg)](https://github.com/benmcosker/Faceplant/actions/workflows/ci.yml)

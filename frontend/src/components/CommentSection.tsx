@@ -97,7 +97,7 @@ export default function CommentSection({ postId, onCommentAdded }: Props) {
         <TextField
           size="small"
           fullWidth
-          placeholder="Write a comment… or /giphy a keyword"
+          placeholder="Add to the noise… or /giphy a keyword"
           value={body}
           onChange={(e) => setBody(e.target.value)}
         />

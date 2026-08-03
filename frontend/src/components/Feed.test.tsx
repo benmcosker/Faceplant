@@ -82,7 +82,7 @@ describe('Feed', () => {
 
     render(<Feed />)
 
-    expect(await screen.findByText('No posts yet. Be the first.')).toBeInTheDocument()
+    expect(await screen.findByText('No posts yet. Give the swarm something to react to.')).toBeInTheDocument()
   })
 
   it('shows an error message when the feed fails to load', async () => {

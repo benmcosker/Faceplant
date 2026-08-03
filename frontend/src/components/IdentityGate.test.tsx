@@ -47,6 +47,11 @@ beforeEach(() => {
 URL.createObjectURL = vi.fn(() => 'blob:mock-url')
 
 describe('IdentityGate', () => {
+  it('leads with the brand tagline as the first thing a new visitor sees', () => {
+    render(<IdentityGate onIdentityResolved={vi.fn()} />)
+    expect(screen.getByText('Engagement is free. We show you the bill.')).toBeInTheDocument()
+  })
+
   it('requests a magic link and shows the "check your email" step', async () => {
     vi.mocked(requestMagicLink).mockResolvedValue(undefined)
     const onIdentityResolved = vi.fn()
