@@ -314,6 +314,37 @@ two-phase engine and its config flag live in
 [`bots/reactions.py`](backend/app/bots/reactions.py) and
 [`config.py`](backend/app/config.py).
 
+### 11. Prompt caching: a shared voice, billed once
+
+The swarm has always had a problem the cost meter made visible: fifty personas,
+fifty unrelated prompt fragments, one incoherent comment section. So there's now
+a single shared **house-style guide** — a ~4,000-token brief on how comments on
+this platform read and behave (brevity, no hashtags, tone by mood, the tells that
+give a bot away) that sits in front of every persona. It makes the manufactured
+engagement read like one coherent, slightly cursed place instead of a random-bot
+soup. It lives in [`bots/house_style.py`](backend/app/bots/house_style.py).
+
+And because that block is **byte-identical on every reaction**, it's a
+[cacheable prompt prefix](https://docs.claude.com/en/docs/build-with-claude/prompt-caching).
+Flip `use_prompt_caching` on and it's sent as the first `system` block with a
+`cache_control` marker, ahead of the per-bot persona; repeat reactions inside the
+cache window read it at ~0.1× instead of paying full input price for those 4,000
+tokens every time. The Meter is in on it too —
+[`usage.py`](backend/app/usage.py) now prices cache **reads** (~0.1×) and
+**writes** (~1.25×) explicitly, so the running cost stays honest whether caching
+is on or off.
+
+Honesty, since the whole app is a monument to it: this only *actually* caches
+when two things are true — the shared prefix clears the model's minimum cacheable
+size (**4,096 tokens** on the default `claude-haiku-4-5`, which the guide is
+deliberately sized to exceed) **and** it's re-read within the 5-minute cache
+window. So the payoff is real for a bursty swarm or the dead-internet loop
+hammering the same prefix, and effectively nil for a lone reaction posted hours
+after the last one. It ships **off by default**; when off, the system prompt is
+byte-for-byte what it always was and nothing is cached or charged for. A 1-hour
+cache TTL — better for this app's spread-out traffic — is a one-line change once
+the pinned SDK is bumped to a version that carries the extended-TTL header.
+
 ## Running locally
 
 ```bash

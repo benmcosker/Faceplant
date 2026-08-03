@@ -26,22 +26,53 @@ MODEL_PRICING: dict[str, tuple[float, float]] = {
 _DEFAULT_PRICING = (1.00, 5.00)
 
 
-def cost_usd(model: str, input_tokens: int, output_tokens: int) -> float:
-    """Estimated USD for a single call, from the per-model token prices."""
+# Prompt-caching multipliers on the input price: a cache write costs ~1.25x (the
+# 5-minute-TTL rate we use), a cache read ~0.1x. When caching is off these token
+# counts are zero and the formula collapses to the plain input+output cost.
+_CACHE_WRITE_MULTIPLIER = 1.25
+_CACHE_READ_MULTIPLIER = 0.1
+
+
+def cost_usd(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+    cache_creation_tokens: int = 0,
+    cache_read_tokens: int = 0,
+) -> float:
+    """Estimated USD for a single call, from the per-model token prices.
+
+    `input_tokens` is the uncached input (full price). Cache writes and reads are
+    priced off the input rate at their respective multipliers, so The Meter stays
+    accurate whether or not prompt caching is on.
+    """
     in_price, out_price = MODEL_PRICING.get(model, _DEFAULT_PRICING)
-    return input_tokens / 1_000_000 * in_price + output_tokens / 1_000_000 * out_price
+    return (
+        input_tokens / 1_000_000 * in_price
+        + cache_creation_tokens / 1_000_000 * in_price * _CACHE_WRITE_MULTIPLIER
+        + cache_read_tokens / 1_000_000 * in_price * _CACHE_READ_MULTIPLIER
+        + output_tokens / 1_000_000 * out_price
+    )
 
 
-def _tokens(response) -> tuple[int, int]:
-    """Pulls (input, output) tokens off a response's usage; (0, 0) if absent.
+def _tokens(response) -> tuple[int, int, int, int]:
+    """Pulls (input, output, cache_write, cache_read) tokens off a response's usage;
+    zeros if absent.
 
     Defensive on purpose — a mocked or malformed response must never break the
-    reaction/ad that produced it just because metering couldn't read usage.
+    reaction/ad that produced it just because metering couldn't read usage. The two
+    cache fields are absent on responses that didn't touch the cache (and on the
+    older mocks in the test suite), so they default to 0.
     """
     usage = getattr(response, "usage", None)
     if usage is None:
-        return 0, 0
-    return int(getattr(usage, "input_tokens", 0) or 0), int(getattr(usage, "output_tokens", 0) or 0)
+        return 0, 0, 0, 0
+    return (
+        int(getattr(usage, "input_tokens", 0) or 0),
+        int(getattr(usage, "output_tokens", 0) or 0),
+        int(getattr(usage, "cache_creation_input_tokens", 0) or 0),
+        int(getattr(usage, "cache_read_input_tokens", 0) or 0),
+    )
 
 
 def record(
@@ -61,13 +92,13 @@ def record(
     post/feed triggered it. Never raises — metering is best-effort.
     """
     try:
-        input_tokens, output_tokens = _tokens(response)
+        input_tokens, output_tokens, cache_write, cache_read = _tokens(response)
         row = models.TokenUsage(
             source=source,
             model=model,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
-            cost_usd=cost_usd(model, input_tokens, output_tokens),
+            cost_usd=cost_usd(model, input_tokens, output_tokens, cache_write, cache_read),
             human_user_id=human_user_id,
             post_id=post_id,
             actor=actor,
