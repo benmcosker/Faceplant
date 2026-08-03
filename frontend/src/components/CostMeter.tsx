@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Box, Button, Divider, Popover, Stack, Typography } from '@mui/material'
 import PaidOutlinedIcon from '@mui/icons-material/PaidOutlined'
 import { fetchCosts, type CostSummary, type SpendEvent } from '../api'
+import PulseDot from './PulseDot'
 
 const POLL_MS = 4000
 
@@ -103,7 +104,11 @@ export default function CostMeter() {
         aria-label="AI cost meter"
         sx={{ textTransform: 'none', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}
       >
-        {usd(total)}
+        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+          {/* Live tell: the meter is spending right now, not showing a stale total. */}
+          <PulseDot size={6} />
+          {usd(total)}
+        </Box>
       </Button>
       <Popover
         open={Boolean(anchorEl)}
@@ -201,7 +206,16 @@ export default function CostMeter() {
           </Stack>
 
           {(cost?.no_human_calls ?? 0) > 0 && (
-            <Box sx={{ mb: 1.5 }}>
+            <Box
+              sx={{
+                mb: 1.5,
+                p: 1,
+                borderLeft: '3px solid',
+                borderColor: 'error.main',
+                borderRadius: 0.5,
+                bgcolor: 'rgba(255, 59, 48, 0.06)',
+              }}
+            >
               <Typography variant="subtitle2" color="error.main" sx={{ mb: 0.5 }}>
                 Spent on nobody
               </Typography>

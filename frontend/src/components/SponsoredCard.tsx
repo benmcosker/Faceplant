@@ -1,6 +1,7 @@
 import { Avatar, Box, Button, Card, CardContent, Typography } from '@mui/material'
 import CampaignIcon from '@mui/icons-material/Campaign'
 import type { Ad } from '../api'
+import PulseDot from './PulseDot'
 
 /**
  * An emotion-targeted "sponsored" post. The banner states the surveillance out
@@ -26,10 +27,13 @@ export default function SponsoredCard({ ad }: { ad: Ad }) {
         <CampaignIcon fontSize="small" />
         <Typography
           variant="caption"
-          sx={{ fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase' }}
+          sx={{ fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase', flexGrow: 1 }}
         >
           Sponsored · targeted to your mood: {ad.mood}
         </Typography>
+        {/* Live-targeting tell: the same pulse The Meter wears, so the ad reads as
+            surveillance happening right now, not a static placement. */}
+        <PulseDot color="secondary.contrastText" size={7} />
       </Box>
       <CardContent>
         <Box sx={{ display: 'flex', gap: 1.5 }}>
