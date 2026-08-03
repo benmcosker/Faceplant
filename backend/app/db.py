@@ -23,6 +23,8 @@ _ADDED_COLUMNS: list[tuple[str, str, str]] = [
     ("users", "mood", "VARCHAR"),
     # Which reaction wave a job belongs to, for the bot-to-bot "dead internet" loop.
     ("bot_reaction_jobs", "generation", "INTEGER"),
+    # The Message Batches job a reaction was submitted in (null unless use_batch_api).
+    ("bot_reaction_jobs", "batch_id", "VARCHAR"),
     # The real identity behind a magic-link login (null for bots). Uniqueness
     # on self-healed databases is enforced at the app layer, not via DDL here.
     ("users", "email", "VARCHAR"),

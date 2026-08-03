@@ -48,6 +48,13 @@ class Settings(BaseSettings):
     long_wave_size_min: int = 3
     long_wave_size_max: int = 5
 
+    # Route bot reactions through the async Message Batches API (50% cheaper) instead
+    # of one synchronous Claude call per reaction. Off by default. When on, a due wave
+    # is submitted as one batch and its comments/likes/cost are written when the batch
+    # ends (usually minutes at low volume) — a fit for the already-delayed reaction
+    # waves. See reconcile_reaction_batches, polled separately by the scheduler.
+    use_batch_api: bool = False
+
     # "Dead internet": bots reacting to other bots' activity, so threads sustain
     # themselves with no humans. OFF by default — this is real, unbounded-by-
     # default Anthropic spend with no human in the loop. When enabled, the guard
