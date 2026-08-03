@@ -118,7 +118,15 @@ export default function CostMeter() {
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
       >
         <Box sx={{ p: 2, width: 320 }}>
-          <Typography variant="overline" color="text.secondary" sx={{ display: 'block', lineHeight: 1.4 }}>
+          <Typography
+            variant="overline"
+            color="text.secondary"
+            // This long label sits right at the wrap threshold in the 320px
+            // popover. Tighten the tracking so it reliably fits one line, and
+            // keep the line-height tight so a two-line wrap on a wider system
+            // font still reads as a heading, not a loose gap.
+            sx={{ display: 'block', lineHeight: 1.3, letterSpacing: '0.04em' }}
+          >
             The cost of manufactured engagement
           </Typography>
           <Typography variant="h4" sx={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
