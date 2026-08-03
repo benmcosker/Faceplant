@@ -84,6 +84,27 @@ class BotReactionJob(Base):
     # seed) post; higher values are bots reacting to bot activity. Bounded by
     # settings.max_reaction_generation once the bot-to-bot loop is enabled.
     generation: Mapped[int] = mapped_column(Integer, default=0)
+    # When settings.use_batch_api is on, the Message Batches job this reaction was
+    # submitted in (null in the synchronous path). The job sits in "submitted"
+    # until that batch ends and its result is reconciled into a comment.
+    batch_id: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+class ReactionBatch(Base):
+    """One submitted Message Batches API job carrying a wave of bot reactions.
+
+    Only created when settings.use_batch_api is on. Reactions cost 50% less this
+    way, at the price of being asynchronous: the covered jobs' comments, likes,
+    and metered cost are written only once the batch's processing_status ends.
+    """
+
+    __tablename__ = "reaction_batches"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    anthropic_batch_id: Mapped[str] = mapped_column(String, unique=True, index=True)
+    status: Mapped[str] = mapped_column(String, default="submitted", index=True)
+    submitted_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
