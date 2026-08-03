@@ -1,5 +1,7 @@
 from pathlib import Path
+from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # .env lives at the project root (one level above backend/).
@@ -31,6 +33,18 @@ class Settings(BaseSettings):
     session_ttl_days: int = 30
     # Set True once served over real HTTPS; localhost dev stays False (http://).
     cookie_secure: bool = False
+    # SameSite policy for the session cookie. "lax" (the default) is right when
+    # the SPA and API are same-site (e.g. app.example.com + api.example.com). For
+    # a cross-site split (SPA and API on different registrable domains) the
+    # browser won't send a Lax cookie on the SPA's fetch calls, so use "none" —
+    # which browsers only honor together with Secure (enforced below). "strict"
+    # also blocks the cookie on the top-level magic-link click, so it's rarely
+    # what you want here.
+    cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+    # Prefix the cookie name with "__Host-", which browsers bind to this exact
+    # origin. The prefix requires Secure + Path=/ and forbids a Domain attribute,
+    # so it cannot be shared across subdomains. Off by default.
+    cookie_host_prefix: bool = False
 
     magic_link_token_ttl_minutes: int = 15
     # Sends magic-link emails via Resend (https://resend.com). Optional: without
@@ -80,6 +94,23 @@ class Settings(BaseSettings):
     # bot_post_interval_minutes; also halts under the global spend ceiling.
     bot_origination_enabled: bool = False
     bot_post_interval_minutes: int = 10
+
+    @model_validator(mode="after")
+    def _validate_cookie_security(self) -> "Settings":
+        # Both of these produce a cookie the browser silently refuses to store
+        # unless Secure is also set — fail at startup rather than mint a session
+        # cookie that never comes back.
+        if self.cookie_samesite == "none" and not self.cookie_secure:
+            raise ValueError(
+                "cookie_samesite='none' requires cookie_secure=True "
+                "(browsers reject SameSite=None cookies without Secure)."
+            )
+        if self.cookie_host_prefix and not self.cookie_secure:
+            raise ValueError(
+                "cookie_host_prefix=True requires cookie_secure=True "
+                "(the __Host- cookie prefix is only valid on a Secure cookie)."
+            )
+        return self
 
 
 settings = Settings()
