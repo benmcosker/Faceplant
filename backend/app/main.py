@@ -25,7 +25,7 @@ scheduler = AsyncIOScheduler()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    scheduler.add_job(run_due_reaction_jobs, "interval", seconds=20)
+    scheduler.add_job(run_due_reaction_jobs, "interval", seconds=settings.reaction_poll_seconds)
     # Reconcile finished Message Batches jobs (no-op unless use_batch_api is on
     # and a batch has ended).
     scheduler.add_job(reconcile_reaction_batches, "interval", seconds=60)

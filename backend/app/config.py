@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # .env lives at the project root (one level above backend/).
@@ -47,6 +48,13 @@ class Settings(BaseSettings):
     short_wave_size_max: int = 5
     long_wave_size_min: int = 3
     long_wave_size_max: int = 5
+
+    # How often the scheduler polls for due reaction jobs. This is the floor on
+    # how fast a reaction can appear: a job scheduled for "now" still waits up to
+    # this many seconds for the next poll. Default 20s is fine for normal use;
+    # drop it to a few seconds for a snappy demo. Minimum 1 (0 would crash the
+    # scheduler).
+    reaction_poll_seconds: int = Field(default=20, ge=1)
 
     # Route bot reactions through the async Message Batches API (50% cheaper) instead
     # of one synchronous Claude call per reaction. Off by default. When on, a due wave
