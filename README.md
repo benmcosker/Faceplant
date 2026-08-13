@@ -429,3 +429,17 @@ npm run cypress:open   # interactive runner (dev server must already be running)
 
 > The first Cypress run downloads its browser binary from `download.cypress.io`;
 > that host must be reachable from your network for `npm run e2e` to work.
+
+## Developing with an orchestrator
+
+This repo is set up to be worked on by one orchestrating agent supervising
+several delegated contexts, each scoped to a slice it owns: `backend/`,
+`frontend/`, the bot voices, plus a read-only scout and a read-only
+verification gate. The agent definitions live in `.claude/agents/`, the
+fan-out/fan-in protocol is `/orchestrate`, and the shared brief every context
+inherits is `CLAUDE.md`.
+
+[`docs/orchestration.md`](docs/orchestration.md) explains the setup, how to
+run it, where the seams are and why they sit where they do — and how it's the
+same architecture as the bot swarm in `backend/app/bots/reactions.py`, one
+level up.
