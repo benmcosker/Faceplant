@@ -22,8 +22,7 @@ own backend, frontend, database, and dependencies — nothing shared with, or
 imported from, the rest of this repository.
 
 ## Demo video
-
-https://github.com/user-attachments/assets/7e876ea0-146a-4203-b6bc-b757ebd5f5fc
+https://github.com/user-attachments/assets/2c28623f-71e4-4654-9df0-1c7b5e74a4c1
 
 
 ## Identity: magic-link email auth
